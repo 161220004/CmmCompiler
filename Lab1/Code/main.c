@@ -1,19 +1,16 @@
 #include <stdio.h>
-#include <stdlib.h>
 
 // 声明外部变量
-extern FILE* yyin;
-extern int yylineno;
-extern int yylex(void);
 extern void yyrestart (FILE *input_file);
 extern int yyparse(void);
-extern void yyset_debug (int);
+extern void yyset_debug(int);
+void printTree();
 
 int main(int argc, char** argv)
 {
   if (argc <= 1) return 1;
   // 是否DEBUG环境
-  yyset_debug(1);
+  // yyset_debug(1);
   // 默认只分析一个文件
   FILE* f = fopen(argv[1], "r");
   if (!f) {
@@ -22,5 +19,6 @@ int main(int argc, char** argv)
   }
   yyrestart(f);
   yyparse();
+  printTree();
   return 0;
 }

@@ -1,5 +1,22 @@
-int main()
+// int main()
+// {
+//   // line comment
+//   /*
+//     block comment
+//   */
+//   int i = 1;
+// }
+
+int nums()
 {
-	int i = 1;
-	int j = 2;
+	int i = 06;
+	int j = 0x3c;
+	float k = 5.6;
+	float l = 5846e-5;
+	float m = 0.6E+5;
+	float n = 08.9;
+	float p = 06E-2;
+	float q = .67;
+	float r = 56.;
+	float s = 8.e;
 }

@@ -55,17 +55,20 @@ ExtDefList : /* empty */ {
 	}
 	;
 /* ExtDef表示一个全局变量、结构体或函数的定义 */
-ExtDef : Specifier ExtDecList SEMI {
+ExtDef : Specifier ExtDecList SEMI { /* 全局变量，禁止初始化 */
 		$$ = createNonTerminalNode("ExtDef", @$.first_line, @$.first_column, 3, $1, $2, $3);
 	}
-	| Specifier SEMI {
+	| Specifier SEMI { /* 结构体 */
 		$$ = createNonTerminalNode("ExtDef", @$.first_line, @$.first_column, 2, $1, $2);
 	}
-	| Specifier FunDec CompSt {
+	| Specifier FunDec CompSt { /* 函数 = 返回类型 + 函数头 + {...} */
 		$$ = createNonTerminalNode("ExtDef", @$.first_line, @$.first_column, 3, $1, $2, $3);
 	}
+	/* 错误恢复 */
+	| Specifier ExtDecList error SEMI
+	| Specifier error SEMI
 	;
-/* ExtDecList表示零个或多个对一个变量的定义VarDec */
+/* ExtDecList表示零个或多个对一个全局变量的定义VarDec（禁止初始化） */
 ExtDecList : VarDec {
 		$$ = createNonTerminalNode("ExtDecList", @$.first_line, @$.first_column, 1, $1);
 	}
@@ -88,6 +91,8 @@ StructSpecifier : STRUCT OptTag LC DefList RC {
 	| STRUCT Tag {
 		$$ = createNonTerminalNode("StructSpecifier", @$.first_line, @$.first_column, 2, $1, $2);
 	}
+	/* 错误恢复 */
+	| STRUCT OptTag LC DefList error RC
 	;
 OptTag : /* empty */ {
 		$$ = createNonTerminalNode("OptTag", @$.first_line, @$.first_column, 0);
@@ -100,13 +105,15 @@ Tag : ID {
 		$$ = createNonTerminalNode("Tag", @$.first_line, @$.first_column, 1, $1);
 	}
 	;
-/* VarDec表示对一个变量的定义 */
+/* VarDec表示对一个变量的定义（禁止初始化） */
 VarDec : ID {
 		$$ = createNonTerminalNode("VarDec", @$.first_line, @$.first_column, 1, $1);
 	}
 	| VarDec LB INT RB {/* 数组变量 */
 		$$ = createNonTerminalNode("VarDec", @$.first_line, @$.first_column, 4, $1, $2, $3, $4);
 	}
+	/* 错误恢复 */
+	| VarDec LB INT error RB
 	;
 /* FunDec表示对一个函数头的定义 */
 FunDec : ID LP VarList RP {
@@ -115,6 +122,9 @@ FunDec : ID LP VarList RP {
 	| ID LP RP {
 		$$ = createNonTerminalNode("FunDec", @$.first_line, @$.first_column, 3, $1, $2, $3);
 	}
+	/* 错误恢复 */
+	| ID LP VarList error RP
+	| ID LP error RP
 	;
 /* VarList包括一个或多个形参ParamDec */
 VarList : ParamDec COMMA VarList {
@@ -129,10 +139,12 @@ ParamDec : Specifier VarDec {
 		$$ = createNonTerminalNode("ParamDec", @$.first_line, @$.first_column, 2, $1, $2);
 	}
 	;
-/* CompSt表示一个由一对花括号括起来的语句块 */
+/* CompSt表示一个由一对花括号括起来的语句块，其中全部局部变量的定义必须在全部语句之前 */
 CompSt : LC DefList StmtList RC {
 		$$ = createNonTerminalNode("CompSt", @$.first_line, @$.first_column, 4, $1, $2, $3, $4);
 	}
+	/* 错误恢复 */
+	| LC DefList StmtList error RC
 	;
 /* StmtList表示零个或多个Stmt的组合 */
 StmtList : /* empty */ {
@@ -161,6 +173,12 @@ Stmt : Exp SEMI {
 	| WHILE LP Exp RP Stmt {
 		$$ = createNonTerminalNode("Stmt", @$.first_line, @$.first_column, 5, $1, $2, $3, $4, $5);
 	}
+	/* 错误恢复 */
+	| Exp error SEMI
+	| RETURN Exp error SEMI
+	| IF LP Exp error RP Stmt %prec LOWER_THAN_ELSE
+	| IF LP Exp error RP Stmt ELSE Stmt
+	| WHILE LP Exp error RP Stmt
 	;
 /* DefList表示零个或多个局部变量的定义Def */
 DefList : /* empty */ {
@@ -174,6 +192,8 @@ DefList : /* empty */ {
 Def : Specifier DecList SEMI {
 		$$ = createNonTerminalNode("Def", @$.first_line, @$.first_column, 3, $1, $2, $3);
 	}
+	/* 错误恢复 */
+	| Specifier DecList error SEMI
 	;
 DecList : Dec {
 		$$ = createNonTerminalNode("DecList", @$.first_line, @$.first_column, 1, $1);
@@ -263,6 +283,11 @@ Exp : Exp ASSIGNOP Exp {
 	| FLOAT {
 		$$ = createNonTerminalNode("Exp", @$.first_line, @$.first_column, 1, $1);
 	}
+	/* 错误恢复 */
+	| LP Exp error RP
+	| ID LP Args error RP
+	| ID LP error RP
+	| Exp LB Exp error RB
 	;
 /* Args表示实参列表，用于函数调用表达式，每个实参都可以变成一个表达式Exp */
 Args : Exp COMMA Args {
@@ -276,5 +301,6 @@ Args : Exp COMMA Args {
 %%
 
 void yyerror(const char* msg) {
+	setError();
   fprintf(stderr, "Error type B at Line %d: %s\n", yylloc.first_line, msg);
 }
