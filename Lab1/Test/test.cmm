@@ -1,10 +1,17 @@
 // 一些特别的情况
 /** 多行注释
- ** 识别成功了/吗
+ ** 识别成功了/*吗
  **/
 int; // 正确
-float a; // 全局变量禁止初始化
+struct st {
+  float a; // 全局变量禁止初始化
+};
 int main() {
-  int a = 5e-1;
+  if (x > 0) if (x == 0) y = 0; else y = 1;
+  int m = 5;
+  float qwertyuiopasdfghjklzxcvbnm = 1.3;
+  int wa@oh; // 一个错误的变量名
+  3.1415926;
+
 }
-/* 一个失败的多行注释
+///* 一个失败的多行注释
