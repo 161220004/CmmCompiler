@@ -62,7 +62,7 @@ ufloat   {uint}({afterp}|{scientf}|({afterp}{scientf}))
     if (!c) { // 文件结束时未读到注释结束符
       // yyless(commentLen); // 回退到缓冲区
       setError();
-      fprintf(stderr, "Error type A at Line %d: Absent of Comment End \"*/\"\n", yylloc.first_line);
+      fprintf(stderr, "Error type A at Line %d: Missing Comment End \"*/\"\n", yylloc.first_line);
       break;
     }
     commentLen += 1;
