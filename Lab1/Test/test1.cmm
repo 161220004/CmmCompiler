@@ -1,22 +1,59 @@
-// int main()
-// {
-//   // line comment
-//   /*
-//     block comment
-//   */
-//   int i = 1;
-// }
-
-int nums()
+/* 样例 1
+int main()
 {
-	int i = 06;
-	int j = 0x3c;
-	float k = 5.6;
-	float l = 5846e-5;
-	float m = 0.6E+5;
-	float n = 08.9;
-	float p = 06E-2;
-	float q = .67;
-	float r = 56.;
-	float s = 8.e;
+	int i = 1;
+	int j = ~i;
 }
+*/
+/* 样例 2
+int main(){
+	float a[10][2];
+	int i;
+	a[5,3] = 1.5;
+	if(a[1][2] == 0) i = 1 else i = 0;
+}
+*/
+/* 样例 3
+int inc()
+{
+  int i;
+  i = i + 1;
+}
+*/
+/* 样例 4
+struct Complex
+{
+  float real, image;
+};
+int main()
+{
+	struct Complex x;
+	y.image = 3.5;
+}
+*/
+/* 样例 1
+int main()
+{
+  int i = 0123;
+  int j = 0x3F;
+}
+*/
+/* 样例 2
+int main()
+{
+  int i = 09;
+  int j = 0x3G;
+}
+*/
+/* 样例 3
+int main()
+{
+  float i = 1.05e-4;
+}
+*/
+/* 样例 4
+int main()
+{
+  float i = 1.05e;
+}
+*/

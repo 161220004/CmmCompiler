@@ -4,6 +4,8 @@
 	#include "lex.yy.c"
 	extern int yyget_debug(void);
 	void yyerror(const char* msg);
+	bool isDetailed = false;
+	void showDetail();
 %}
 
 /* Definitions */
@@ -65,8 +67,8 @@ ExtDef : Specifier ExtDecList SEMI { /* 全局变量，禁止初始化 */
 		$$ = createNonTerminalNode("ExtDef", @$.first_line, @$.first_column, 3, $1, $2, $3);
 	}
 	/* 错误恢复 */
-	| Specifier ExtDecList error SEMI
-	| Specifier error SEMI
+	| Specifier ExtDecList error SEMI { if (isDetailed) fprintf(stderr, "Missing \';\'\n"); }
+	| Specifier error SEMI { if (isDetailed) fprintf(stderr, "Missing \';\'\n"); }
 	;
 /* ExtDecList表示零个或多个对一个全局变量的定义VarDec（禁止初始化） */
 ExtDecList : VarDec {
@@ -92,7 +94,7 @@ StructSpecifier : STRUCT OptTag LC DefList RC {
 		$$ = createNonTerminalNode("StructSpecifier", @$.first_line, @$.first_column, 2, $1, $2);
 	}
 	/* 错误恢复 */
-	| STRUCT OptTag LC DefList error RC
+	| STRUCT OptTag LC DefList error RC { if (isDetailed) fprintf(stderr, "Missing \'}\'\n"); }
 	;
 OptTag : /* empty */ {
 		$$ = createNonTerminalNode("OptTag", @$.first_line, @$.first_column, 0);
@@ -113,7 +115,7 @@ VarDec : ID {
 		$$ = createNonTerminalNode("VarDec", @$.first_line, @$.first_column, 4, $1, $2, $3, $4);
 	}
 	/* 错误恢复 */
-	| VarDec LB INT error RB
+	| VarDec LB INT error RB { if (isDetailed) fprintf(stderr, "Missing \']\'\n"); }
 	;
 /* FunDec表示对一个函数头的定义 */
 FunDec : ID LP VarList RP {
@@ -123,8 +125,8 @@ FunDec : ID LP VarList RP {
 		$$ = createNonTerminalNode("FunDec", @$.first_line, @$.first_column, 3, $1, $2, $3);
 	}
 	/* 错误恢复 */
-	| ID LP VarList error RP
-	| ID LP error RP
+	| ID LP VarList error RP { if (isDetailed) fprintf(stderr, "Missing \')\'\n"); }
+	| ID LP error RP { if (isDetailed) fprintf(stderr, "Missing \')\'\n"); }
 	;
 /* VarList包括一个或多个形参ParamDec */
 VarList : ParamDec COMMA VarList {
@@ -144,7 +146,7 @@ CompSt : LC DefList StmtList RC {
 		$$ = createNonTerminalNode("CompSt", @$.first_line, @$.first_column, 4, $1, $2, $3, $4);
 	}
 	/* 错误恢复 */
-	| LC DefList StmtList error RC
+	| LC DefList StmtList error RC { if (isDetailed) fprintf(stderr, "Missing \'}\'\n"); }
 	;
 /* StmtList表示零个或多个Stmt的组合 */
 StmtList : /* empty */ {
@@ -174,11 +176,11 @@ Stmt : Exp SEMI {
 		$$ = createNonTerminalNode("Stmt", @$.first_line, @$.first_column, 5, $1, $2, $3, $4, $5);
 	}
 	/* 错误恢复 */
-	| Exp error SEMI
-	| RETURN Exp error SEMI
-	| IF LP Exp error RP Stmt %prec LOWER_THAN_ELSE
-	| IF LP Exp error RP Stmt ELSE Stmt
-	| WHILE LP Exp error RP Stmt
+	| Exp error SEMI { if (isDetailed) fprintf(stderr, "Missing \';\'\n"); }
+	| RETURN Exp error SEMI { if (isDetailed) fprintf(stderr, "Missing \';\'\n"); }
+	| IF LP Exp error RP Stmt %prec LOWER_THAN_ELSE { if (isDetailed) fprintf(stderr, "Missing \')\'\n"); }
+	| IF LP Exp error RP Stmt ELSE Stmt { if (isDetailed) fprintf(stderr, "Missing \')\'\n"); }
+	| WHILE LP Exp error RP Stmt { if (isDetailed) fprintf(stderr, "Missing \')\'\n"); }
 	;
 /* DefList表示零个或多个局部变量的定义Def */
 DefList : /* empty */ {
@@ -193,7 +195,7 @@ Def : Specifier DecList SEMI {
 		$$ = createNonTerminalNode("Def", @$.first_line, @$.first_column, 3, $1, $2, $3);
 	}
 	/* 错误恢复 */
-	| Specifier DecList error SEMI
+	| Specifier DecList error SEMI { if (isDetailed) fprintf(stderr, "Missing \';\'\n"); }
 	;
 DecList : Dec {
 		$$ = createNonTerminalNode("DecList", @$.first_line, @$.first_column, 1, $1);
@@ -284,10 +286,10 @@ Exp : Exp ASSIGNOP Exp {
 		$$ = createNonTerminalNode("Exp", @$.first_line, @$.first_column, 1, $1);
 	}
 	/* 错误恢复 */
-	| LP Exp error RP
-	| ID LP Args error RP
-	| ID LP error RP
-	| Exp LB Exp error RB
+	| LP Exp error RP { if (isDetailed) fprintf(stderr, "Missing \')\'\n"); }
+	| ID LP Args error RP { if (isDetailed) fprintf(stderr, "Missing \')\'\n"); }
+	| ID LP error RP { if (isDetailed) fprintf(stderr, "Missing \')\'\n"); }
+	| Exp LB Exp error RB { if (isDetailed) fprintf(stderr, "Missing \']\'\n"); }
 	;
 /* Args表示实参列表，用于函数调用表达式，每个实参都可以变成一个表达式Exp */
 Args : Exp COMMA Args {
@@ -302,5 +304,11 @@ Args : Exp COMMA Args {
 
 void yyerror(const char* msg) {
 	setError();
-  fprintf(stderr, "Error type B at Line %d: %s\n", yylloc.first_line, msg);
+  fprintf(stderr, "Error type B at Line %d: %s. ", yylloc.first_line, msg);
+	if (!isDetailed) fprintf(stderr, "\n");
+}
+
+/* 是否显示具体错误情况（可能有误） */
+void showDetail() {
+	isDetailed = true;
 }

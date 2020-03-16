@@ -31,6 +31,12 @@ afterp   \.{digit}+
 scientf  [eE][+-]?{digit}+
 ufloat   {uint}({afterp}|{scientf}|({afterp}{scientf}))
 
+/* 识别一些特定错误格式的词元 */
+err_uint16   0[Xx][0-9A-Za-z]+
+err_uint8    0{digit}+
+err_ufloat   ({digit}|\.)+([eE][+-]?)?({digit}|\.)*
+err_id       ({letter_}|{digit})+
+
 %% /* Rules */
 
 {ws} {
@@ -59,10 +65,10 @@ ufloat   {uint}({afterp}|{scientf}|({afterp}{scientf}))
   int commentLen = 0;
   char c = input();
   while (state != 2) {
-    if (!c) { // 文件结束时未读到注释结束符
+    if (!c || c == EOF) { // 文件结束时未读到注释结束符
       // yyless(commentLen); // 回退到缓冲区
       setError();
-      fprintf(stderr, "Error type A at Line %d: Missing Comment End \"*/\"\n", yylloc.first_line);
+      fprintf(stderr, "Error type A at Line %d (to %d): Missing Comment End \"*/\"\n", yylloc.first_line, yylineno);
       break;
     }
     commentLen += 1;
@@ -279,6 +285,30 @@ ufloat   {uint}({afterp}|{scientf}|({afterp}{scientf}))
 {id} {
   if (yyget_debug()) printf("\t[%s] ID %s at line %d (%d)\n", yytext, yytext, yylloc.first_line, yylloc.first_column);
   yylval = createTerminalNode("ID", yylloc.first_line, yylloc.first_column, ID_VAL, yytext);
+  return ID;
+}
+
+{err_uint16} {
+  setError();
+	fprintf(stderr, "Error type A at Line %d: Illegal hexadecimal number \'%s\'\n", yylloc.first_line, yytext);
+  return INT;
+}
+
+{err_uint8} {
+  setError();
+	fprintf(stderr, "Error type A at Line %d: Illegal octal number \'%s\'\n", yylloc.first_line, yytext);
+  return INT;
+}
+
+{err_ufloat} {
+  setError();
+	fprintf(stderr, "Error type A at Line %d: Illegal floating point number \'%s\'\n", yylloc.first_line, yytext);
+  return FLOAT;
+}
+
+{err_id} {
+  setError();
+	fprintf(stderr, "Error type A at Line %d: Illegal id \'%s\'\n", yylloc.first_line, yytext);
   return ID;
 }
 
