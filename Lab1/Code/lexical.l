@@ -27,9 +27,9 @@ id       {letter_}({letter_}|{digit})*
 uint16   0[Xx][0-9A-Fa-f]+
 uint8    0[0-7]+
 uint     0|([1-9]{digit}*)
-afterp   \.{digit}+
-scientf  [eE][+-]?{digit}+
-ufloat   {uint}({afterp}|{scientf}|({afterp}{scientf}))
+ufloatp  {digit}+\.{digit}+
+ufloats  ({ufloatp}|({digit}+\.)|(\.{digit}+)|({digit}+))[eE][+-]?{digit}+
+ufloat   {ufloatp}|{ufloats}
 
 /* 识别一些特定错误格式的词元 */
 err_uint16   0[Xx][0-9A-Za-z]+

@@ -21,4 +21,7 @@ int nums()
 	float s = 8.e;
 	float 0id = 34.3;
 	float t = 3.5.6;
+	float u = .2E-3;
+	float v = 6.e9;
+	float w = 08e-6;
 }
