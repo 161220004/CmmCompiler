@@ -12,15 +12,15 @@ typedef enum {
 } ValueType;
 
 struct Node {
-  char* name;
-  bool isTerminal;
-  int lineno;
-  int colno;
-  ValueType valType;
-  union {
-		int ival;
-		double fval;
-    char* cval;
+  char* name; /* 终结符/非终结符的名字 */
+  bool isTerminal; /* 是否是终结符 */
+  int lineno; /* 行数 */
+  int colno; /* 列数 */
+  ValueType valType; /* 数据类型 */
+  union { /* 根据不同的数据类型存储不同的值 */
+		int ival; /* int */
+		double fval; /* float */
+    char* cval; /* ID或Type */
 	};
   struct Node* child;
 	struct Node* nextSibling;
