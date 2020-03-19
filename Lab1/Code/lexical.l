@@ -55,6 +55,7 @@ err_id       ({letter_}|{digit})+
     if (yyget_debug()) printf("%c", c);
     c = input();
   }
+  yycolumn = 1;
   if (yyget_debug()) printf("\"\n");
 }
 
