@@ -4,7 +4,9 @@ Node* root = NULL;
 
 int errorflag = 0;
 
-Node* createTerminalNode(char* tName, int lineno, int colno, ValueType valType, ...) {
+int labflag = 1; // 第几次实验
+
+Node* createTerminalNode(NodeName tName, int lineno, int colno, ValueType valType, ...) {
   Node *terminal = malloc(sizeof(Node));
   terminal->name = tName;
   terminal->isTerminal = true;
@@ -16,17 +18,14 @@ Node* createTerminalNode(char* tName, int lineno, int colno, ValueType valType, 
 	va_start(val, valType);
   if (valType == INT_VAL) {
     terminal->ival = va_arg(val, int);
-    if (yyget_debug()) printf("\t\t- Tree.createTerminalNode: get Value INT = %d\n", terminal->ival);
   } else if (valType == FLOAT_VAL) {
     terminal->fval = va_arg(val, double);
-    if (yyget_debug()) printf("\t\t- Tree.createTerminalNode: get Value FLOAT = %f\n", terminal->fval);
   } else if (valType == ID_VAL || valType == TYPE_VAL) {
     char* cval = va_arg(val, char*);
     int clen = strlen(cval);
     terminal->cval = (char*)malloc(sizeof(char) * clen);
     strncpy(terminal->cval, cval, clen);
     terminal->cval[clen] = '\0';
-    if (yyget_debug()) printf("\t\t- Tree.createTerminalNode: get Value ID/TYPE = %s (%lu Byte)\n", terminal->cval, sizeof(char) * clen);
   } else {
     /* NO_Val */
   }
@@ -36,7 +35,7 @@ Node* createTerminalNode(char* tName, int lineno, int colno, ValueType valType, 
   return terminal;
 }
 
-Node* createNonTerminalNode(char* ntName, int lineno, int colno, int num, ...) {
+Node* createNonTerminalNode(NodeName ntName, int lineno, int colno, int num, ...) {
   Node *nonterminal = malloc(sizeof(Node));
   nonterminal->name = ntName;
   nonterminal->isTerminal = false;
@@ -47,30 +46,34 @@ Node* createNonTerminalNode(char* ntName, int lineno, int colno, int num, ...) {
   va_list children;
 	va_start(children, num);
   Node* lastSibling = nonterminal;
-  if (yyget_debug()) printf("\t\t- Tree.createNonTerminalNode: %s", nonterminal->name);
   while(num > 0) {
     Node* cnode = va_arg(children, Node*);
     if (nonterminal->child == NULL) {
       nonterminal->child = cnode;
       lastSibling = nonterminal->child;
-      if (yyget_debug()) printf(" -> (child) %s", lastSibling->name);
     } else {
       lastSibling->nextSibling = cnode;
       lastSibling = lastSibling->nextSibling;
-      if (yyget_debug()) printf(" -> (next) %s", lastSibling->name);
     }
     num -= 1;
   }
-  if (yyget_debug()) printf("\n");
   va_end(children);
   return nonterminal;
 }
+
+char* NodeNameStr[53] = {
+  "Program", "ExtDefList", "ExtDef", "ExtDecList", "Specifier", "StructSpecifier",
+  "OptTag", "Tag", "VarDec", "FunDec", "VarList", "ParamDec", "CompSt",
+  "StmtList", "Stmt", "DefList", "Def", "DecList", "Dec", "Exp", "Args",
+  "SEMI", "COMMA", "EQ", "NE", "LE", "GE", "LT", "GT", "ASSIGNOP", "PLUS", "MINUS",
+  "STAR", "DIV", "AND", "OR", "NOT", "LP", "RP", "LB", "RB", "LC", "RC", "DOT",
+  "TYPE", "ID", "INT", "FLOAT", "STRUCT", "RETURN", "IF", "ELSE", "WHILE"
+};
 
 void printNode(Node* node, int lev) {
   if (node == NULL) return;
   // 没有子节点的非终结符节点，跳过
   if (!node->isTerminal && node->child == NULL) {
-    if (yyget_debug()) printf("\t\t- Tree.printNode: [%s] No Leaves Nonterminal\n", node->name);
     printNode(node->nextSibling, lev);
     return;
   }
@@ -78,7 +81,7 @@ void printNode(Node* node, int lev) {
   for (int i = 0; i < lev; i++) {
     printf("  ");
   }
-  printf("%s", node->name);
+  printf("%s", NodeNameStr[node->name]);
   if (node->valType == INT_VAL) {
     printf(": %d", node->ival);
   } else if (node->valType == FLOAT_VAL) {
@@ -98,9 +101,16 @@ void printNode(Node* node, int lev) {
 }
 
 void printTree() {
-  if (errorflag == 0) {
+  if (labflag == 1 && errorflag == 0) {
     printNode(root, 0);
   }
+}
+
+void setLabFlag(int n) {
+  labflag = n;
+}
+bool isLab(int n) {
+  return (labflag == n);
 }
 
 void setError() {

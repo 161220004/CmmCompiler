@@ -1,4 +1,13 @@
-int main()
+struct {
+  int a;
+  float b;
+} tmp;
+
+float arg1;
+
+int func(int a1, int a2);
+
+int func(int arg1, int arg2)
 {
   int i = 0;
   j = i + 1;
