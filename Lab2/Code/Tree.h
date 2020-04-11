@@ -20,6 +20,8 @@ typedef enum {
   TN_TYPE, TN_ID, TN_INT, TN_FLOAT, TN_STRUCT, TN_RETURN, TN_IF, TN_ELSE, TN_WHILE
 } NodeName;
 
+typedef struct Node Node;
+
 struct Node {
   NodeName name; /* 终结符/非终结符的名字 */
   bool isTerminal; /* 是否是终结符 */
@@ -31,11 +33,9 @@ struct Node {
 		double fval; /* float */
     char* cval; /* ID或Type */
 	};
-  struct Node* child;
-	struct Node* nextSibling;
+  Node* child;
+	Node* nextSibling;
 };
-
-typedef struct Node Node;
 
 /** 根节点 */
 extern Node* root;
@@ -48,6 +48,9 @@ Node* createNonTerminalNode(NodeName ntName, int lineno, int colno, int num, ...
 
 /** 打印整棵语法树 */
 void printTree();
+
+/* 复制一段字符串 */
+char* getStrncpy(char* str);
 
 /** 第几次实验 */
 void setLabFlag(int n);

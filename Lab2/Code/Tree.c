@@ -6,6 +6,14 @@ int errorflag = 0;
 
 int labflag = 1; // 第几次实验
 
+char* getStrncpy(char* str) {
+  int len = strlen(str);
+  char* cp = (char*)malloc(sizeof(char) * len);
+  strncpy(cp, str, len);
+  cp[len] = '\0';
+  return cp;
+}
+
 Node* createTerminalNode(NodeName tName, int lineno, int colno, ValueType valType, ...) {
   Node *terminal = malloc(sizeof(Node));
   terminal->name = tName;
@@ -22,10 +30,7 @@ Node* createTerminalNode(NodeName tName, int lineno, int colno, ValueType valTyp
     terminal->fval = va_arg(val, double);
   } else if (valType == ID_VAL || valType == TYPE_VAL) {
     char* cval = va_arg(val, char*);
-    int clen = strlen(cval);
-    terminal->cval = (char*)malloc(sizeof(char) * clen);
-    strncpy(terminal->cval, cval, clen);
-    terminal->cval[clen] = '\0';
+    terminal->cval = getStrncpy(cval);
   } else {
     /* NO_Val */
   }
