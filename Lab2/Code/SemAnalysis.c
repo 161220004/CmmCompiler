@@ -1,51 +1,4 @@
-#include "Tree.h"
-#include "SemAnalysis.h"
-
-/* 可检测的语义错误如下：
-  1) 错误类型1： 变量在使用时未经定义
-  2) 错误类型2： 函数在调用时未经定义
-  3) 错误类型3： 变量出现重复定义，或变量与前面定义过的结构体名字重复
-  4) 错误类型4： 函数出现重复定义（即同样的函数名出现了不止一次定义）
-  5) 错误类型5： 赋值号两边的表达式类型不匹配
-  6) 错误类型6： 赋值号左边出现一个只有右值的表达式
-  7) 错误类型7： 操作数类型不匹配或操作数类型与操作符不匹配（例如整型变量与数组变量相加减，或数组（或结构体）变量与数组（或结构体）变量相加减）
-  8) 错误类型8： return语句的返回类型与函数定义的返回类型不匹配
-  9) 错误类型9： 函数调用时实参与形参的数目或类型不匹配
-  10) 错误类型10： 对非数组型变量使用“[…]” （数组访问）操作符
-  11) 错误类型11： 对普通变量使用“(…)”或“()” （函数调用）操作符
-  12) 错误类型12： 数组访问操作符“[…]” 中出现非整数（例如a[1.5]）
-  13) 错误类型13： 对非结构体型变量使用“.” 操作符
-  14) 错误类型14： 访问结构体中未定义过的域
-  15) 错误类型15： 结构体中域名重复定义（指同一结构体中） ，或在定义时对域进行初始化（例如struct A { int a = 0; }）
-  16) 错误类型16： 结构体的名字与前面定义过的结构体或变量的名字重复
-  17) 错误类型17： 直接使用未定义过的结构体来定义变量
-  18) 错误类型18： 函数进行了声明，但没有被定义
-  19) 错误类型19： 函数的多次声明互相冲突（即函数名一致，但返回类型、形参数量或者形参类型不一致），或者声明与定义之间互相冲突
-*/
-void reportError(int errno, int lineno, char* val, char* addition) {
-  switch (errno) {
-    case 1: fprintf(stderr, "Error type 1 at Line %d: Undefined variable \"%s\".", lineno, val); break;
-    case 2: fprintf(stderr, "Error type 2 at Line %d: Undefined function \"%s\".", lineno, val); break;
-    case 3: fprintf(stderr, "Error type 3 at Line %d: Redefined variable \"%s\".", lineno, val); break;
-    case 4: fprintf(stderr, "Error type 4 at Line %d: Redefined function \"%s\".", lineno, val); break;
-    case 5: fprintf(stderr, "Error type 5 at Line %d: Type mismatched for assignment.", lineno); break;
-    case 6: fprintf(stderr, "Error type 6 at Line %d: The left-hand side of an assignment must be a variable.", lineno); break;
-    case 7: fprintf(stderr, "Error type 7 at Line %d: Type mismatched for operands.", lineno); break;
-    case 8: fprintf(stderr, "Error type 8 at Line %d: Type mismatched for return.", lineno); break;
-    case 9: fprintf(stderr, "Error type 9 at Line %d: Function \"%s\" is not applicable for arguments \"%s\".", lineno, val, addition); break;
-    case 10: fprintf(stderr, "Error type 10 at Line %d: \"%s\" is not an array.", lineno, val); break;
-    case 11: fprintf(stderr, "Error type 11 at Line %d: \"%s\" is not a function.", lineno, val); break;
-    case 12: fprintf(stderr, "Error type 12 at Line %d: \"%s\" is not an integer.", lineno, val); break;
-    case 13: fprintf(stderr, "Error type 13 at Line %d: Illegal use of \".\".", lineno); break;
-    case 14: fprintf(stderr, "Error type 14 at Line %d: Non-existent field \"%s\".", lineno, val); break;
-    case 15: fprintf(stderr, "Error type 15 at Line %d: Redefined field \"%s\".", lineno, val); break;
-    case 16: fprintf(stderr, "Error type 16 at Line %d: Duplicated name \"%s\".", lineno, val); break;
-    case 17: fprintf(stderr, "Error type 17 at Line %d: Undefined structure \"%s\".", lineno, val); break;
-    case 18: fprintf(stderr, "Error type 18 at Line %d: Undefined function \"%s\".", lineno, val); break;
-    case 19: fprintf(stderr, "Error type 19 at Line %d: Inconsistent declaration of function \"%s\".", lineno, val); break;
-    default: fprintf(stderr, "Undefined Error !!!");
-  }
-}
+#include "SemUtils.h"
 
 /* 语义错误的检测过程中，涉及到的推导过程包括：
  * 定义声明类：
@@ -96,146 +49,28 @@ void reportError(int errno, int lineno, char* val, char* addition) {
     (Part:) Exp --1-> ID LP RP --2-> ID LP Args RP
 */
 
-/* 检查一个节点的子节点是否符合要求（只需检查第n个节点（从1开始数）是否是expectName），没有第n个则返回false */
-bool childrenMatch(Node* node, int n, NodeName expectName) {
-  Node* child = node->child;
-  int restN = n - 1;
-  while (child != NULL) {
-    if (restN == 0) {
-      if (child->name == expectName) return true;
-      else return false;
-    } else {
-      child = child->nextSibling;
-      restN -= 1;
-    }
-  }
-  return false;
-}
-
-/* 获取一个节点的第n个子节点（从1开始数），没有第n个则返回NULL */
-Node* getCertainChild(Node* node, int n) {
-  Node* child = node->child;
-  int restN = n - 1;
-  while (child != NULL) {
-    if (restN == 0) {
-      return child;
-    } else {
-      child = child->nextSibling;
-      restN -= 1;
-    }
-  }
-  return NULL;
-}
-
-/* 类型复制（浅拷贝） */
-Type* typeShallowCopy(Type* type) {
-  Type* cp = (Type*)malloc(sizeof(Type));
-  cp->kind = type->kind;
-  switch (type->kind) {
-    case T_STRUCT:
-      cp->structure.node = type->structure.node;
-      cp->structure.name = type->structure.name;
-      cp->structure.isDefined = type->structure.isDefined;
-      break;
-    case T_ARRAY:
-      cp->array.eleType = type->array.eleType;
-      cp->array.length = type->array.length;
-      break;
-    default: cp->isRight = type->isRight;
-  }
-  return cp;
-}
-
-/* 在一个TypeNode*链表前方添加一段链表 */
-TypeNode* addToTypeNodeList(TypeNode* preList, TypeNode* addList) {
-  if (addList == NULL) { return preList; }
-  TypeNode* tmpNode = addList;
-  while (tmpNode->next != NULL) { tmpNode = tmpNode->next; }
-  tmpNode->next = preList;
-  return addList;
-}
-
-/* 函数符号表（有序数组） */
-SymFuncNode* funcSymList = NULL;
-int funcSymListLen = 0;
-/* 结构体符号表（有序数组） */
-SymStructNode* structSymList = NULL;
-int structSymListLen = 0;
-/* 全局作用域 */
-FieldNode* globalField = NULL;
-int globalVarListLen = 0;
-/* 当前所在的作用域 */
-FieldNode* currentField = NULL;
-
-/* 辅助粗略计算函数/结构体（不是变量）/全局变量个数 */
-void calExtDecListVarNum(Node* extDecListNode) {
-  globalVarListLen += 1;
-  if (childrenMatch(extDecListNode, 2, TN_COMMA)) {
-    calExtDecListVarNum(getCertainChild(extDecListNode, 3));
-  }
-}
-void calExtDefSymNum(Node* extDefNode) {
-  if (childrenMatch(extDefNode, 2, NTN_FUNDEC)) { // 函数
-    funcSymListLen += 1;
-  } else {
-    if (childrenMatch(getCertainChild(extDefNode, 1), 1, NTN_STRUCTSPECIFIER)) { // 结构体（不是变量）
-      structSymListLen += 1;
-    }
-    if (childrenMatch(extDefNode, 2, NTN_EXTDECLIST)) { // 全局变量
-      calExtDecListVarNum(getCertainChild(extDefNode, 2));
-    }
-  }
-}
-void calExtDefListSymNum(Node* extDefListNode) {
-  if (extDefListNode->child != NULL) {
-    calExtDefSymNum(getCertainChild(extDefListNode, 1));
-    calExtDefListSymNum(getCertainChild(extDefListNode, 2));
-  }
-}
-/* 粗略计算函数/结构体（不是变量）/全局变量个数（声明/定义都+1） */
-void calRoughSymNum() {
-  calExtDefListSymNum(getCertainChild(root, 1));
-}
-
-/* 从有序函数/结构体符号表中查询，返回下标；没有则返回-1 */
-int findInList(char* name, int length, bool isFunc) {
-  if (length < 1) return -1;
-  int mid = length / 2;
-  int result;
-  if (isFunc) { // 从有序函数符号表中查询
-    result = (funcSymList[mid].isNull) ? (-1) : strcmp(name, funcSymList[mid].name);
-  } else { // 从结构体符号表中查询
-    result = (structSymList[mid].isNull) ? (-1) : strcmp(name, structSymList[mid].name);
-  }
-  if (result == 0) {
-    return mid;
-  } else if (result < 0) { // 查询的值小于mid值
-    return findInList(name, mid, isFunc);
-  } else { // 查询的值大于mid值
-    return findInList(name, length - mid - 1, isFunc);
-  }
-}
-
 /* Program: 分析全部 */
 void handleProgram() {
-  // 计算函数/结构体（不是变量）/全局变量个数
-  calRoughSymNum();
+  Node* extDefListNode = getCertainChild(root, 1);
   // 创建全局函数表
-  funcSymList = (SymFuncNode*)malloc(funcSymListLen * sizeof(SymFuncNode));
+  funcSymListLen = getRoughFuncNum(extDefListNode);
+  funcSymList = (SymElem*)malloc(funcSymListLen * sizeof(SymElem));
   for (int i = 0; i < funcSymListLen; i++) { funcSymList[i].isNull = true; }
   // 创建全局结构体表
-  structSymList = (SymStructNode*)malloc(structSymListLen * sizeof(SymStructNode));
+  structSymListLen = getRoughStructNum(extDefListNode);
+  structSymList = (SymElem*)malloc(structSymListLen * sizeof(SymElem));
   for (int i = 0; i < structSymListLen; i++) { structSymList[i].isNull = true; }
   // 创建全局作用域
   globalField = (FieldNode*)malloc(sizeof(FieldNode));
   globalField->type = F_GLOBAL;
   globalField->parent = NULL;
   globalField->func = NULL;
-  globalField->var = NULL;
-  globalField->symNode = (SymVarNode*)malloc(globalVarListLen * sizeof(SymVarNode));
+  globalField->varListLen = getRoughGloVarNum(extDefListNode);
+  globalField->varSymList = (SymElem*)malloc(globalField->varListLen * sizeof(SymElem));
+  for (int i = 0; i < globalField->varListLen; i++) { globalField->varSymList[i].isNull = true; }
   currentField = globalField; // 当前处于全局作用域
   // 开始逐层分析
-  handleExtDefList(getCertainChild(root, 1));
+  handleExtDefList(extDefListNode);
 }
 
 /* ExtDefList: 检查一系列全局变量、结构体或函数的定义 */
@@ -248,36 +83,124 @@ void handleExtDefList(Node* extDefListNode) {
 
 /* ExtDef: 检查一个全局变量、结构体或函数的定义 */
 void handleExtDef(Node* extDefNode) {
-  Type* specType = handleSpecifier(getCertainChild(extDefNode, 1)); // 获取该全局变量的类型
   if (childrenMatch(extDefNode, 2, NTN_EXTDECLIST)) { // 任意类型全局变量(包括结构体变量)声明
+    Type* specType = handleSpecifier(getCertainChild(extDefNode, 1), false); // 获取该全局变量的类型
+    // 获取定义的全部变量
     TypeNode* varTypeNodeList = handleExtDecList(getCertainChild(extDefNode, 2), NULL, specType);
-    globalField->var = addToTypeNodeList(globalField->var, varTypeNodeList);
+    // 添加到全局变量符号表，若有重复的则报错
+    TypeNode* varTypeNode = varTypeNodeList;
+    while (varTypeNode != NULL) {
+      if (findInVarList(varTypeNode->name, 0, globalField->varListLen, globalField->varSymList) < 0) { // 无重复
+        addToVarList(varTypeNode, globalField->varSymList, globalField->varListLen);
+      } else { // 发现重复，报错3
+        reportError(3, varTypeNode->lineno, varTypeNode->name, NULL);
+      }
+    }
   } else if (childrenMatch(extDefNode, 2, TN_SEMI)) { // 结构体定义
-
-  } else if (childrenMatch(extDefNode, 3, NTN_COMPST)) { // 函数定义
-
-  } else { // if (childrenMatch(extDefNode, 3, TN_SEMI)) { // 函数声明
-
+    // 处理结构体定义（非变量）
+    handleSpecifier(getCertainChild(extDefNode, 1), true);
+  } else { // 函数定义/声明
+    // 获取函数的返回类型
+    Type* returnType = handleSpecifier(getCertainChild(extDefNode, 1), false);
+    Node* funcNode = getCertainChild(extDefNode, 2);
+    Node* idNode = getCertainChild(funcNode, 1);
+    TypeNode* varListTypeNode = NULL;
+    if (childrenMatch(funcNode, 3, NTN_VARLIST)) { // 有参数
+      varListTypeNode = handleVarList(getCertainChild(funcNode, 3), NULL);
+    }
+    // 查询此函数名是否已经记录
+    int index = findInSymList(idNode->cval, 0, funcSymListLen, true);
+    if (childrenMatch(extDefNode, 3, TN_SEMI)) { // 函数声明
+      if (index < 0) { // 首次出现
+        Function* decFunc = (Function*)malloc(sizeof(Function));
+        decFunc->name = idNode->cval;
+        decFunc->isDefined = false;
+        decFunc->returnType = returnType;
+        decFunc->paramNode = varListTypeNode;
+        // 添加到函数符号表
+        addToFuncList(decFunc);
+      } else { // 重复声明，检测是否一致
+        if (!typeEquals(returnType, funcSymList[index].func->returnType) ||
+            !paramEquals(varListTypeNode, funcSymList[index].func->paramNode)) { // 存在冲突，报错19
+          reportError(19, funcNode->lineno, idNode->cval, NULL);
+        }
+      }
+    } else { // if (childrenMatch(extDefNode, 3, NTN_COMPST)) { // 函数定义
+      if (index < 0) { // 首次出现
+        Function* defFunc = (Function*)malloc(sizeof(Function));
+        defFunc->name = idNode->cval;
+        defFunc->isDefined = true;
+        defFunc->returnType = returnType;
+        defFunc->paramNode = varListTypeNode;
+        // 添加到函数符号表
+        addToFuncList(defFunc);
+      } else { // 再次出现重复的
+        Function* prefunc = funcSymList[index].func;
+        if (prefunc->isDefined) { // 重复定义，报错4
+          reportError(4, funcNode->lineno, idNode->cval, NULL);
+        } else { // 声明过，检测声明与定义是否一致
+          if (!typeEquals(returnType, funcSymList[index].func->returnType) ||
+              !paramEquals(varListTypeNode, funcSymList[index].func->paramNode)) { // 存在冲突，报错19
+            reportError(19, funcNode->lineno, idNode->cval, NULL);
+          }
+          prefunc->isDefined = true; // 无论是否一致，都视为已定义
+        }
+      }
+      // 创建函数作用域
+      // TODO: ...
+      handleCompSt(getCertainChild(extDefNode, 3));
+    }
   }
 }
 
-/* ExtDecList: 检查零个或多个对一个全局变量的定义VarDec；返回定义后的节点 */
+/* VarList: 检查函数的一个或多个形参；返回形参链表 */
+TypeNode* handleVarList(Node* varListNode, TypeNode* inhTypeNode) {
+  Node* paramDecNode = getCertainChild(varListNode, 1);
+  TypeNode* paramTypeNode = handleParamDec(paramDecNode);
+  paramTypeNode->next = inhTypeNode;
+  if (paramDecNode->nextSibling == NULL) { // 最后一个形参
+    return paramTypeNode;
+  } else { // 后面还有
+    return handleVarList(getCertainChild(varListNode, 3), paramTypeNode);
+  }
+}
+
+/* ParamDec: 对一个形参的定义，为类型描述符+变量名；返回形参节点 */
+TypeNode* handleParamDec(Node* paramDecNode) {
+  Type* paramType = handleSpecifier(getCertainChild(paramDecNode, 1), false);
+  Node* varDecNode = getCertainChild(paramDecNode, 2);
+  Type* varDecType = handleVarDec(varDecNode, paramType);
+  TypeNode* varTypeNode = (TypeNode*)malloc(sizeof(TypeNode));
+  varTypeNode->type = varDecType;
+  varTypeNode->name = getVarDecName(varDecNode);
+  varTypeNode->lineno = varDecNode->lineno;
+  varTypeNode->next = NULL;
+  return varTypeNode;
+}
+
+/* CompSt: 一个由一对花括号括起来的语句块，其中全部局部变量的定义必须在全部语句之前 */
+void handleCompSt(Node* compStNode) {
+
+}
+
+/* ExtDecList: 检查零个或多个对一个全局变量的定义VarDec；返回定义后的链表 */
 TypeNode* handleExtDecList(Node* extDecListNode, TypeNode* inhTypeNode, Type* inhType) {
   Node* varDecNode = getCertainChild(extDecListNode, 1);
   Type* varDecType = handleVarDec(varDecNode, inhType);
   TypeNode* varTypeNode = (TypeNode*)malloc(sizeof(TypeNode));
   varTypeNode->type = varDecType;
   varTypeNode->name = getVarDecName(varDecNode);
+  varTypeNode->lineno = varDecNode->lineno;
+  varTypeNode->next = inhTypeNode;
   if (varDecNode->nextSibling == NULL) { // 最后一个VarDec
-    varTypeNode->next = inhTypeNode;
     return varTypeNode;
   } else { // 后面还有VarDec
     return handleExtDecList(getCertainChild(extDecListNode, 3), varTypeNode, inhType);
   }
 }
 
-/* Specifier: 检查类型定义（基本/结构体） */
-Type* handleSpecifier(Node* specNode) {
+/* Specifier: 检查类型定义（基本/结构体），isSemi特指“Specifier SEMI”的特殊情况 */
+Type* handleSpecifier(Node* specNode, bool isSemi) {
   if (childrenMatch(specNode, 1, TN_TYPE)) { // 子节点为基本类型（int/float）
     Type* typeType = (Type*)malloc(sizeof(Type));
     Node* typeChild = getCertainChild(specNode, 1);
@@ -289,28 +212,64 @@ Type* handleSpecifier(Node* specNode) {
     }
     return typeType;
   } else { // if (childrenMatch(specNode, 1, NTN_STRUCTSPECIFIER)) { // 子节点为结构体
-    return handleStructSpecifier(getCertainChild(specNode, 1));
+    return handleStructSpecifier(getCertainChild(specNode, 1), isSemi);
   }
 }
 
 /* StructSpecifier: 检查结构体类型定义 */
-Type* handleStructSpecifier(Node* structSpecNode) {
+Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
   if (childrenMatch(structSpecNode, 2, NTN_OPTTAG)) { // 有结构体具体定义
     Type* structType = (Type*)malloc(sizeof(Type));
     structType->kind = T_STRUCT;
-    structType->structure.isDefined = true;
     Node* defListNode = getCertainChild(structSpecNode, 4);
     structType->structure.node = handleDefList(defListNode, NULL, true); // 获取域链表
+    // 查找域链表是否存在重名
+    TypeNode* structField = structType->structure.node;
+    while (structField != NULL) {
+      TypeNode* structFieldTmp = structField->next;
+      while (structFieldTmp != NULL) {
+        if (strcmp(structField->name, structFieldTmp->name) == 0) { // 重名报错15
+          reportError(15, structField->lineno, structField->name, NULL);
+        }
+        structFieldTmp = structFieldTmp->next;
+      }
+      structField = structField->next;
+    }
+    // 获取结构体名
     Node* optTagNode = getCertainChild(structSpecNode, 2);
-    if (optTagNode->child == NULL) { // 为空
-      structType->structure.name = "";
+    if (optTagNode->child == NULL) { // 为空，则把结构体行数作为匿名结构体的名
+      structType->structure.name = itoa(optTagNode->lineno);
     } else { // if (childrenMatch(optTagNode, 1, TN_ID)) { // 获取ID
       Node* idNode = getCertainChild(optTagNode, 1);
       structType->structure.name = getStrncpy(idNode->cval);
     }
+    // 添加到结构体符号表数组
+    if (findInSymList(structType->structure.name, 0, structSymListLen, false) < 0) { // 第一次出现
+      addToStructList(structType);
+    } else { // 发现重名，报错16
+      reportError(16, optTagNode->lineno, structType->structure.name, NULL);
+    }
+    if (isInVarList(structType->structure.name, currentField)) { // 检查与变量重名，报错16
+      reportError(16, optTagNode->lineno, structType->structure.name, NULL);
+    }
     return structType;
   } else { // if (childrenMatch(structSpecNode, 2, NTN_TAG)) { // 结构体仅声明（无内容定义）
-    // TODO: ...
+    Node* idNode = getCertainChild(getCertainChild(structSpecNode, 2), 1);
+    // 检查此结构体是否已经定义过
+    int index = findInSymList(idNode->cval, 0, structSymListLen, false);
+    if (index < 0) { // 出现未定义结构体
+      if (!isSemi) { // 若不是特殊情况如“struct A;”，即定义变量，报错17
+        reportError(17, idNode->lineno, idNode->cval, NULL);
+      }
+      // 作为一个“空”结构体返回以便程序继续运行
+      Type* structType = (Type*)malloc(sizeof(Type));
+      structType->kind = T_STRUCT;
+      structType->structure.node = NULL;
+      structType->structure.name = idNode->cval;
+      return structType;
+    } else { // 已经定义过
+      return structSymList[index].type;
+    }
   }
 }
 
@@ -342,14 +301,15 @@ TypeNode* handleDefList(Node* defListNode, TypeNode* inhTypeNode, bool inStruct)
     return inhTypeNode;
   } else { // if (childrenMatch(defListNode, 1, NTN_DEF)) { // 在继承的那部分中添加Def并传递下去
     TypeNode* defTypeNode = handleDef(getCertainChild(defListNode, 1), inStruct);
-    return addToTypeNodeList(inhTypeNode, defTypeNode);
+    inhTypeNode = linkTypeNodeList(inhTypeNode, defTypeNode);
+    return handleDefList(getCertainChild(defListNode, 2), inhTypeNode, inStruct);
   }
 }
 
 /* Def: 检查一条局部定义；返回一个TypeNode链表 */
 TypeNode* handleDef(Node* defNode, bool inStruct) {
   Node* specNode = getCertainChild(defNode, 1);
-  return handleDecList(getCertainChild(defNode, 2), NULL, handleSpecifier(specNode), inStruct);
+  return handleDecList(getCertainChild(defNode, 2), NULL, handleSpecifier(specNode, false), inStruct);
 }
 
 /* DecList: 检查每一组逗号分割的变量名；返回一个TypeNode链表 */
@@ -358,7 +318,6 @@ TypeNode* handleDecList(Node* decListNode, TypeNode* inhTypeNode, Type* inhType,
   TypeNode* decTypeNode = handleDec(decNode, inhType, inStruct);
   decTypeNode->next = inhTypeNode;
   if (decNode->nextSibling == NULL) { // 最后一个Dec
-    decTypeNode->next = inhTypeNode;
     return decTypeNode;
   } else { // 后面还有Dec
     return handleDecList(getCertainChild(decListNode, 3), decTypeNode, inhType, inStruct);
@@ -372,10 +331,12 @@ TypeNode* handleDec(Node* decNode, Type* inhType, bool inStruct) {
   TypeNode* varTypeNode = (TypeNode*)malloc(sizeof(TypeNode));
   varTypeNode->type = varDecType;
   varTypeNode->name = getVarDecName(varDecNode);
+  varTypeNode->lineno = varDecNode->lineno;
+  varTypeNode->next = NULL;
   if (varDecNode->nextSibling == NULL) { // 无初始化
     return varTypeNode;
   } else { // 有初始化
-    if (inStruct) { // 结构体内禁止初始化
+    if (inStruct) { // 结构体内禁止初始化，报错15
       reportError(15, varDecNode->lineno, varTypeNode->name, NULL);
     } else { // 检查初始化是否符合要求
       // TODO: ...
