@@ -178,6 +178,16 @@ int getRoughGloVarNum(Node* extDefListNode) {
   }
 }
 
+/* 粗略计算局部变量个数 */
+int getRoughLocVarNum(Node* defListNode) {
+  if (defListNode->child == NULL) return 0;
+  else {
+    Node* defNode = getCertainChild(defListNode, 1);
+    return (getCertainNum(getCertainChild(defNode, 2), NTN_VARDEC)
+          + getRoughLocVarNum(getCertainChild(defListNode, 2)));
+  }
+}
+
 /* 添加一个元素到函数符号表有序数组 */
 void addToFuncList(Function* func) {
   for (int i = 0; i < funcSymListLen; i++) {
@@ -298,6 +308,83 @@ bool isInVarList(char* name, FieldNode* field) {
     }
   }
   return false;
+}
+
+/* 新建基本类型（int/float） */
+Type* createBasicType(char* typeStr) {
+  Type* basicType = (Type*)malloc(sizeof(Type));
+  basicType->isRight = false;
+  if (strcmp("int", typeStr) == 0) { // int
+    basicType->kind = T_INT;
+  } else if (strcmp("float", typeStr) == 0) { // float
+    basicType->kind = T_FLOAT;
+  }
+  return basicType;
+}
+
+/* 新建数组类型 */
+Type* createArrayType(int length, Type* eleType) {
+  Type* arrayType = (Type*)malloc(sizeof(Type));
+  arrayType->kind = T_ARRAY;
+  arrayType->array.length = length;
+  arrayType->array.eleType = eleType;
+  return arrayType;
+}
+
+/* 新建结构体类型 */
+Type* createStructType(char* name, TypeNode* typeNode) {
+  Type* structType = (Type*)malloc(sizeof(Type));
+  structType->kind = T_STRUCT;
+  structType->structure.node = typeNode;
+  structType->structure.name = name;
+  return structType;
+}
+
+/* 新建TypeNode类型 */
+TypeNode* createTypeNode(Type* type, char* name, int lineno, TypeNode* next) {
+  TypeNode* typeNode = (TypeNode*)malloc(sizeof(TypeNode));
+  typeNode->type = type;
+  typeNode->name = name;
+  typeNode->lineno = lineno;
+  typeNode->next = next;
+  return typeNode;
+}
+
+/* 新建函数 */
+Function* createFunction(char* name, bool isDefined, Type* returnType, TypeNode* paramNode) {
+  Function* func = (Function*)malloc(sizeof(Function));
+  func->name = name;
+  func->isDefined = isDefined;
+  func->returnType = returnType;
+  func->paramNode = paramNode;
+  return func;
+}
+
+/* 新建currentField的子作用域 */
+FieldNode* createChildField(FieldType type, int varListLen, Function* func) {
+  FieldNode* field = (FieldNode*)malloc(sizeof(FieldNode));
+  field->type = type;
+  field->parent = currentField;
+  field->func = func;
+  int addLen = 0; // 如果是函数作用域，将参数表加入局部变量表，因而长度要加上参数个数
+  if (type == F_FUNCTION) { // 计算参数长度
+    TypeNode* paramNode = func->paramNode;
+    while (paramNode != NULL) {
+      addLen += 1;
+      paramNode = paramNode->next;
+    }
+  }
+  field->varListLen = varListLen + addLen;
+  field->varSymList = (SymElem*)malloc(field->varListLen * sizeof(SymElem));
+  for (int i = 0; i < field->varListLen; i++) { field->varSymList[i].isNull = true; }
+  if (type == F_FUNCTION) { // 如果是函数作用域，将参数表加入局部变量表
+    TypeNode* paramNode = func->paramNode;
+    while (paramNode != NULL) {
+      addToVarList(paramNode, field->varSymList, field->varListLen);
+      paramNode = paramNode->next;
+    }
+  }
+  return field;
 }
 
 /* 检查两个类型是否一致 */

@@ -11,7 +11,7 @@ typedef enum { T_INT, T_FLOAT, T_ARRAY, T_STRUCT } Kind;
 
 /* 作用域类型：包括全局作用域，局部作用域（函数/条件/循环/其他） */
 typedef enum {
-  F_GLOBAL, F_FUNCTION, F_CONDITION, F_LOOP, F_OTHER
+  F_GLOBAL, F_FUNCTION, F_COND_LOOP, F_ANONY
 } FieldType;
 
 typedef struct Type Type;
@@ -73,12 +73,16 @@ Type* handleSpecifier(Node* specNode, bool isSemi);
 Type* handleStructSpecifier(Node* structSpecNode, bool isSemi);
 Type* handleVarDec(Node* varDecNode, Type* inhType);
 char* getVarDecName(Node* varDecNode);
+Function* handleFunDec(Node* funDecNode, Type* returnType, bool isDefined);
 TypeNode* handleVarList(Node* varListNode, TypeNode* inhTypeNode);
 TypeNode* handleParamDec(Node* paramDecNode);
 void handleCompSt(Node* compStNode);
+void handleStmtList(Node* stmtListNode);
+void handleStmt(Node* stmtNode, FieldType extField);
 TypeNode* handleDefList(Node* defListNode, TypeNode* inhTypeNode, bool inStruct);
 TypeNode* handleDef(Node* defNode, bool inStruct);
 TypeNode* handleDecList(Node* decListNode, TypeNode* inhTypeNode, Type* inhType, bool inStruct);
 TypeNode* handleDec(Node* decNode, Type* inhType, bool inStruct);
+Type* handleExp(Node* expNode);
 
 #endif
