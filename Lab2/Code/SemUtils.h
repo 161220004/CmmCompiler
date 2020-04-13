@@ -30,13 +30,16 @@ void addToStructList(Type* type);
 void addToVarList(TypeNode* addVar, SymElem* varList, int varListLen);
 int findInSymList(char* name, int start, int end, bool isFunc);
 int findInVarList(char* name, int start, int end, SymElem* varList);
-bool isInVarList(char* name, FieldNode* field);
+Type* findTypeInAllVarList(char* name, FieldNode* field);
+Type* createUndefinedType();
+Type* createRightType(Kind kind);
 Type* createBasicType(char* typeStr);
 Type* createArrayType(int length, Type* eleType);
 Type* createStructType(char* name, TypeNode* typeNode);
 TypeNode* createTypeNode(Type* type, char* name, int lineno, TypeNode* next);
 Function* createFunction(char* name, bool isDefined, Type* returnType, TypeNode* paramNode);
 FieldNode* createChildField(FieldType type, int varListLen, Function* func);
+char* getArgsString(TypeNode* paramNode, char* funcName);
 bool typeEquals(Type* type1, Type* type2);
 bool paramEquals(TypeNode* param1, TypeNode* param2);
 

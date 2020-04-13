@@ -6,8 +6,8 @@
 #include <stdbool.h>
 #include <string.h>
 
-/* 类型：包括 int，float，数组，结构体 */
-typedef enum { T_INT, T_FLOAT, T_ARRAY, T_STRUCT } Kind;
+/* 类型：包括 int，float，数组，结构体，未定义 */
+typedef enum { T_INT, T_FLOAT, T_ARRAY, T_STRUCT, T_UNDEFINED } Kind;
 
 /* 作用域类型：包括全局作用域，局部作用域（函数/条件/循环/其他） */
 typedef enum {
@@ -22,7 +22,7 @@ typedef struct SymElem SymElem;
 
 /* 类型信息 */
 struct Type {
-  Kind kind; // 类型，int/float/array/struct
+  Kind kind; // 类型，int/float/array/struct/undefined
   union {
     bool isRight; // int/float专用，是否是右值
     struct { Type* eleType; int length; } array; // array专用，元素类型和元素个数
@@ -84,5 +84,6 @@ TypeNode* handleDef(Node* defNode, bool inStruct);
 TypeNode* handleDecList(Node* decListNode, TypeNode* inhTypeNode, Type* inhType, bool inStruct);
 TypeNode* handleDec(Node* decNode, Type* inhType, bool inStruct);
 Type* handleExp(Node* expNode);
+TypeNode* handleArgs(Node* argsNode, TypeNode* inhTypeNode);
 
 #endif

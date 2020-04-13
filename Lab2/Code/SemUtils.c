@@ -285,6 +285,7 @@ int findInSymList(char* name, int start, int end, bool isFunc) { // end是最后
 /* 从当前变量符号表中查询，返回下标；没有则返回-1 */
 int findInVarList(char* name, int start, int end, SymElem* varList) {
   if (start >= end) return -1;
+  if (varList == NULL) return -1;
   int mid = (end - start) / 2;
   int result = (varList[mid].isNull) ? (-1) : strcmp(name, varList[mid].name);
   if (result == 0) {
@@ -296,18 +297,32 @@ int findInVarList(char* name, int start, int end, SymElem* varList) {
   }
 }
 
-/* 从当前以及其全部父作用域中查询 */
-bool isInVarList(char* name, FieldNode* field) {
+/* 从当前以及其全部父作用域中查询，若有返回最近那个的类型，没有则返回NULL */
+Type* findTypeInAllVarList(char* name, FieldNode* field) {
   while (field != NULL) {
-    int varListLen = field->varListLen;
-    SymElem* varList = field->varSymList;
-    if (findInVarList(name, 0, varListLen, varList) < 0) { // 当前没找到
+    int index = findInVarList(name, 0, field->varListLen, field->varSymList);
+    if (index < 0) { // 当前没找到
       field = field->parent;
     } else { // 找到了
-      return true;
+      return field->varSymList[index].type;
     }
   }
-  return false;
+  return NULL;
+}
+
+/* 新建未定义类型 */
+Type* createUndefinedType() {
+  Type* undefinedType = (Type*)malloc(sizeof(Type));
+  undefinedType->kind = T_UNDEFINED;
+  return undefinedType;
+}
+
+/* 新建右值基本类型（int/float） */
+Type* createRightType(Kind kind) {
+  Type* rightType = (Type*)malloc(sizeof(Type));
+  rightType->isRight = true;
+  rightType->kind = kind;
+  return rightType;
 }
 
 /* 新建基本类型（int/float） */
@@ -375,7 +390,9 @@ FieldNode* createChildField(FieldType type, int varListLen, Function* func) {
     }
   }
   field->varListLen = varListLen + addLen;
-  field->varSymList = (SymElem*)malloc(field->varListLen * sizeof(SymElem));
+  if (field->varListLen > 0) {
+    field->varSymList = (SymElem*)malloc(field->varListLen * sizeof(SymElem));
+  } else field->varSymList = NULL;
   for (int i = 0; i < field->varListLen; i++) { field->varSymList[i].isNull = true; }
   if (type == F_FUNCTION) { // 如果是函数作用域，将参数表加入局部变量表
     TypeNode* paramNode = func->paramNode;
@@ -387,12 +404,51 @@ FieldNode* createChildField(FieldType type, int varListLen, Function* func) {
   return field;
 }
 
-/* 检查两个类型是否一致 */
-bool typeEquals(Type* type1, Type* type2) {
-
+/* 获取函数参数表字符串 */
+char* getArgsString(TypeNode* paramNode, char* funcName) {
+  char* result = (char*)malloc(64 * sizeof(char));
+  result[0] = '\0';
+  strcat(result, funcName);
+  strcat(result, "(");
+  while (paramNode != NULL) {
+    switch (paramNode->type->kind) {
+      case T_INT: strcat(result, "int"); break;
+      case T_FLOAT: strcat(result, "float"); break;
+      case T_STRUCT: strcat(result, "struct "); strcat(result, paramNode->type->structure.name); break;
+      case T_ARRAY: strcat(result, "array"); break;
+      default: strcat(result, "undefined");
+    }
+    strcat(result, ", ");
+  }
+  strcat(result, ")");
+  return result;
 }
 
-/* 检查两个函数参数类型是否一致 */
-bool paramEquals(TypeNode* param1, TypeNode* param2) {
+/* 检查两个类型是否一致 */
+bool typeEquals(Type* type1, Type* type2) {
+  if (type1->kind != type2->kind) return false;
+  switch (type1->kind) {
+    case T_ARRAY:
+      if (type1->array.length == type2->array.length) {
+        return typeEquals(type1->array.eleType, type2->array.eleType);
+      } else return false; // 数组长度不同不能视为等价
+      break;
+    case T_STRUCT: // 域的顺序和类型都相同
+      return paramEquals(type1->structure.node, type2->structure.node);
+      break;
+    case T_UNDEFINED: return false; // 两个未定义类型不等
+    default: return true; // 这里基本类型不考虑右值
+  }
+}
 
+/* 检查两个函数参数链表类型/结构体域链表类型是否一致（名字不同没关系） */
+bool paramEquals(TypeNode* param1, TypeNode* param2) {
+  while (param1 != NULL && param2 != NULL) {
+    if (typeEquals(param1->type, param2->type)) { // 判断下一个
+      param1 = param1->next;
+      param2 = param2->next;
+    } else return false; // 任何一个域/参数不同就判定结构体/参数表不同
+  }
+  if (param1 == NULL && param2 == NULL) return true; // 同时结束
+  else return false;
 }

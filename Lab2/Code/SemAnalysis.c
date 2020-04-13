@@ -128,7 +128,7 @@ void handleExtDef(Node* extDefNode) {
           preDefFunc->isDefined = true; // 无论是否一致，都视为已定义
         }
       }
-      // 创建函数作用域，进入作用域处理完退回到当前作用域
+      // 创建函数作用域（重复定义的按本次定义的算），进入作用域处理完退回到当前作用域
       Node* compStNode = getCertainChild(extDefNode, 3);
       FieldNode* funcField = createChildField(F_FUNCTION, getRoughLocVarNum(getCertainChild(compStNode, 2)), defFunc);
       currentField = funcField; // 当前作用域置为函数作用域
@@ -180,7 +180,7 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
     } else { // 发现重名，报错16
       reportError(16, optTagNode->lineno, structName, NULL);
     }
-    if (isInVarList(structName, currentField)) { // 检查与变量重名，报错16
+    if (findTypeInAllVarList(structName, currentField) != NULL) { // 检查与变量重名，报错16
       reportError(16, optTagNode->lineno, structName, NULL);
     }
     // 查找域链表是否存在重名（重名不必删除）
@@ -379,5 +379,70 @@ TypeNode* handleDec(Node* decNode, Type* inhType, bool inStruct) {
 
 /* Exp: 检查表达式，返回表达式类型 */
 Type* handleExp(Node* expNode) {
+  if (childrenMatch(expNode, 1, TN_LP)) { // 括号
+    return handleExp(getCertainChild(expNode, 2));
+  } else if (childrenMatch(expNode, 1, TN_INT)) { // 右值（int）
+    return createRightType(T_INT);
+  } else if (childrenMatch(expNode, 1, TN_FLOAT)) { // 右值（float）
+    return createRightType(T_FLOAT);
+  } else if (childrenMatch(expNode, 1, TN_ID)) {
+    Node* idNode = getCertainChild(expNode, 1);
+    if (idNode->nextSibling == NULL) { // 返回ID对应的类型
+      Type* idType = findTypeInAllVarList(idNode->cval, currentField);
+      if (idType == NULL) { // 发现未定义变量，报错1
+        reportError(1, idNode->lineno, idNode->cval, NULL);
+        return createUndefinedType(); // 返回未定义类型
+      } else {
+        return idType; // 返回最近定义域内定义的类型
+      }
+    } else { // 函数调用
+      int index = findInSymList(idNode->cval, 0, funcSymListLen, true);
+      if (index < 0) { // 发现未定义函数，报错2
+        reportError(2, idNode->lineno, idNode->cval, NULL);
+        return createUndefinedType(); // 返回未定义类型
+      } else { // 函数已定义
+        Function* func = funcSymList[index].func;
+        TypeNode* argTypeNode = NULL; // 实参链表
+        if (childrenMatch(expNode, 3, NTN_ARGS)) // 含参函数调用
+          argTypeNode = handleArgs(getCertainChild(expNode, 3), NULL);
+        if (!paramEquals(func->paramNode, argTypeNode)) // 参数不匹配，报错9
+          reportError(9, idNode->lineno, getArgsString(func->paramNode, func->name), getArgsString(argTypeNode, ""));
+        return func->returnType;
+      }
+    }
+  } else if (childrenMatch(expNode, 1, TN_MINUS)) { // 取负（算术运算，int/float）
+    Type* expType = handleExp(getCertainChild(expNode, 2));
+    if (expType->kind == T_UNDEFINED) { // Undefined是遗留错误，略过
+      return expType;
+    } if (expType->kind == T_INT || expType->kind == T_FLOAT) { // 合法的算数运算，注意右值的“感染”
+      return expType;
+    } else { // 不合法的算式，报错7
+      reportError(7, expNode->lineno, NULL, NULL);
+      return createUndefinedType(); // 返回未定义类型
+    }
+  } else if (childrenMatch(expNode, 1, TN_NOT)) { // 取反（逻辑运算，仅int）
+    Type* expType = handleExp(getCertainChild(expNode, 2));
+    if (expType->kind == T_UNDEFINED) { // Undefined是遗留错误，略过
+      return expType;
+    } if (expType->kind == T_INT) { // 合法的算数运算，注意右值的“感染”
+      return expType;
+    } else { // 不合法的算式，报错7
+      reportError(7, expNode->lineno, NULL, NULL);
+      return createUndefinedType(); // 返回未定义类型
+    }
+  } else { // if (childrenMatch(expNode, 1, NTN_EXP)) {
 
+  }
+}
+
+/* Args: 检查实参列表，用于函数调用表达式，每个实参都可以变成一个表达式Exp；返回的匿名的TypeNode链表 */
+TypeNode* handleArgs(Node* argsNode, TypeNode* inhTypeNode) {
+  Node* expNode = getCertainChild(argsNode, 1);
+  Type* expType = handleExp(expNode);
+  TypeNode* expTypeNode = createTypeNode(expType, "", expNode->lineno, inhTypeNode);
+  if (expNode->nextSibling == NULL) { // 最后一个
+    return expTypeNode;
+  } else { // 接下来还有
+    return handleArgs(getCertainChild(argsNode, 3), expTypeNode);
+  }
 }
