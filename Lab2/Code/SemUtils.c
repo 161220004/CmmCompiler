@@ -55,6 +55,7 @@ void reportError(int errno, int lineno, char* val, char* addition) {
     case 19: fprintf(stderr, "Error type 19 at Line %d: Inconsistent declaration of function \"%s\".", lineno, val); break;
     default: fprintf(stderr, "Undefined Error !!!");
   }
+  fprintf(stderr, "\n");
 }
 
 /* 检查一个节点的子节点是否符合要求（只需检查第n个节点（从1开始数）是否是expectName），没有第n个则返回false */
@@ -275,7 +276,7 @@ TypeNode* findInTypeNode(char* name, TypeNode* typeNode) {
 /* 从有序函数/结构体符号表中查询，返回下标；没有则返回-1 */
 int findInSymList(char* name, int start, int end, bool isFunc) { // end是最后一个下标+1
   if (start >= end) return -1;
-  int mid = (end - start) / 2;
+  int mid = (start + end) / 2;
   int result;
   if (isFunc) { // 从有序函数符号表中查询
     result = (funcSymList[mid].isNull) ? (-1) : strcmp(name, funcSymList[mid].name);
@@ -295,7 +296,7 @@ int findInSymList(char* name, int start, int end, bool isFunc) { // end是最后
 int findInVarList(char* name, int start, int end, SymElem* varList) {
   if (start >= end) return -1;
   if (varList == NULL) return -1;
-  int mid = (end - start) / 2;
+  int mid = (start + end) / 2;
   int result = (varList[mid].isNull) ? (-1) : strcmp(name, varList[mid].name);
   if (result == 0) {
     return mid;
@@ -398,7 +399,9 @@ FieldNode* createChildField(FieldType type, int varListLen, Function* func) {
   field->varListLen = varListLen + addLen;
   if (field->varListLen > 0) {
     field->varSymList = (SymElem*)malloc(field->varListLen * sizeof(SymElem));
-  } else field->varSymList = NULL;
+  } else {
+    field->varSymList = NULL;
+  }
   for (int i = 0; i < field->varListLen; i++) { field->varSymList[i].isNull = true; }
   if (type == F_FUNCTION) { // 如果是函数作用域，将参数表加入局部变量表
     TypeNode* paramNode = func->paramNode;
