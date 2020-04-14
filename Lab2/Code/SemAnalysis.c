@@ -49,6 +49,13 @@
     (Part:) Exp --1-> ID LP RP --2-> ID LP Args RP
 */
 
+/* 语义分析 */
+void semanticAnalysis() {
+  if (isLab(2)) {
+    handleProgram();
+  }
+}
+
 /* Program: 分析全部 */
 void handleProgram() {
   Node* extDefListNode = getCertainChild(root, 1);
@@ -69,6 +76,7 @@ void handleProgram() {
 
 /* ExtDefList: 检查一系列全局变量、结构体或函数的定义 */
 void handleExtDefList(Node* extDefListNode) {
+  if(yyget_debug()) printf("handleExtDefList: %d\n", extDefListNode->lineno);
   if (extDefListNode->child != NULL) { // 还存在未处理的定义
     handleExtDef(getCertainChild(extDefListNode, 1));
     handleExtDefList(getCertainChild(extDefListNode, 2));
@@ -77,6 +85,7 @@ void handleExtDefList(Node* extDefListNode) {
 
 /* ExtDef: 检查一个全局变量、结构体或函数的定义 */
 void handleExtDef(Node* extDefNode) {
+  if(yyget_debug()) printf("handleExtDef: %d\n", extDefNode->lineno);
   if (childrenMatch(extDefNode, 2, NTN_EXTDECLIST)) { // 任意类型全局变量(包括结构体变量)声明
     Type* specType = handleSpecifier(getCertainChild(extDefNode, 1), false); // 获取该全局变量的类型
     // 获取定义的全部变量
@@ -89,6 +98,7 @@ void handleExtDef(Node* extDefNode) {
       } else { // 发现重复，报错3
         reportError(3, varTypeNode->lineno, varTypeNode->name, NULL);
       }
+      varTypeNode = varTypeNode->next;
     }
   } else if (childrenMatch(extDefNode, 2, TN_SEMI)) { // 结构体定义
     // 处理结构体定义（非变量）
@@ -140,6 +150,7 @@ void handleExtDef(Node* extDefNode) {
 
 /* ExtDecList: 检查零个或多个对一个全局变量的定义VarDec；返回定义后的链表 */
 TypeNode* handleExtDecList(Node* extDecListNode, TypeNode* inhTypeNode, Type* inhType) {
+  if(yyget_debug()) printf("handleExtDecList: %d\n", extDecListNode->lineno);
   Node* varDecNode = getCertainChild(extDecListNode, 1);
   Type* varDecType = handleVarDec(varDecNode, inhType);
   TypeNode* varTypeNode = createTypeNode(varDecType, getVarDecName(varDecNode), varDecNode->lineno, inhTypeNode);
@@ -152,8 +163,12 @@ TypeNode* handleExtDecList(Node* extDecListNode, TypeNode* inhTypeNode, Type* in
 
 /* Specifier: 检查类型定义（基本/结构体），isSemi特指“Specifier SEMI”的特殊情况 */
 Type* handleSpecifier(Node* specNode, bool isSemi) {
+  if(yyget_debug()) printf("handleSpecifier: %d\n", specNode->lineno);
   if (childrenMatch(specNode, 1, TN_TYPE)) { // 子节点为基本类型（int/float）
-    return createBasicType(getCertainChild(specNode, 1)->cval);
+    char* kindStr = getCertainChild(specNode, 1)->cval;
+    Kind kind = T_INT;
+    if (strcmp("float", kindStr) == 0) kind = T_FLOAT;
+    return createBasicType(kind);
   } else { // if (childrenMatch(specNode, 1, NTN_STRUCTSPECIFIER)) { // 子节点为结构体
     return handleStructSpecifier(getCertainChild(specNode, 1), isSemi);
   }
@@ -161,6 +176,7 @@ Type* handleSpecifier(Node* specNode, bool isSemi) {
 
 /* StructSpecifier: 检查结构体类型定义 */
 Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
+  if(yyget_debug()) printf("handleStructSpecifier: %d\n", structSpecNode->lineno);
   if (childrenMatch(structSpecNode, 2, NTN_OPTTAG)) { // 有结构体具体定义
     // 获取结构体名
     char* structName = NULL;
@@ -186,12 +202,9 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
     // 查找域链表是否存在重名（重名不必删除）
     TypeNode* structField = structType->structure.node;
     while (structField != NULL) {
-      TypeNode* structFieldTmp = structField->next;
-      while (structFieldTmp != NULL) {
-        if (strcmp(structField->name, structFieldTmp->name) == 0) { // 重名报错15
-          reportError(15, structField->lineno, structField->name, NULL);
-        }
-        structFieldTmp = structFieldTmp->next;
+      TypeNode* dupStructField = findInTypeNode(structField->name, structField->next);
+      if (dupStructField != NULL) { // 重名报错15
+        reportError(15, structField->lineno, structField->name, NULL);
       }
       structField = structField->next;
     }
@@ -213,6 +226,7 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
 
 /* VarDec: 检查变量定义（基本/数组），需借助上一次继承的类型 */
 Type* handleVarDec(Node* varDecNode, Type* inhType)  {
+  if(yyget_debug()) printf("handleVarDec: %d\n", varDecNode->lineno);
   if (childrenMatch(varDecNode, 1, TN_ID)) { // 最后获得一个ID，直接返回前面的继承属性
     return typeShallowCopy(inhType);
   } else { // if (childrenMatch(varDecNode, 1, NTN_VARDEC)) { // 操作数组
@@ -232,6 +246,7 @@ char* getVarDecName(Node* varDecNode) {
 
 /* FunDec: 检查对一个函数头的定义 */
 Function* handleFunDec(Node* funDecNode, Type* returnType, bool isDefined) {
+  if(yyget_debug()) printf("handleFunDec: %d\n", funDecNode->lineno);
   Node* idNode = getCertainChild(funDecNode, 1);
   if (childrenMatch(funDecNode, 3, NTN_VARLIST)) { // 有参数
     TypeNode* paramNode = handleVarList(getCertainChild(funDecNode, 3), NULL);
@@ -255,6 +270,7 @@ Function* handleFunDec(Node* funDecNode, Type* returnType, bool isDefined) {
 
 /* VarList: 检查函数的一个或多个形参；返回形参链表 */
 TypeNode* handleVarList(Node* varListNode, TypeNode* inhTypeNode) {
+  if(yyget_debug()) printf("handleVarList: %d\n", varListNode->lineno);
   Node* paramDecNode = getCertainChild(varListNode, 1);
   TypeNode* paramTypeNode = handleParamDec(paramDecNode);
   paramTypeNode->next = inhTypeNode;
@@ -267,6 +283,7 @@ TypeNode* handleVarList(Node* varListNode, TypeNode* inhTypeNode) {
 
 /* ParamDec: 检查对一个形参的定义，为类型描述符+变量名；返回形参节点 */
 TypeNode* handleParamDec(Node* paramDecNode) {
+  if(yyget_debug()) printf("handleParamDec: %d\n", paramDecNode->lineno);
   Type* paramType = handleSpecifier(getCertainChild(paramDecNode, 1), false);
   Node* varDecNode = getCertainChild(paramDecNode, 2);
   Type* varDecType = handleVarDec(varDecNode, paramType);
@@ -275,6 +292,7 @@ TypeNode* handleParamDec(Node* paramDecNode) {
 
 /* CompSt: 检查一个由一对花括号括起来的语句块，其中全部局部变量的定义必须在全部语句之前 */
 void handleCompSt(Node* compStNode) {
+  if(yyget_debug()) printf("handleCompSt: %d\n", compStNode->lineno);
   // 处理定义部分，获取全部变量声明
   TypeNode* defTypeNode = handleDefList(getCertainChild(compStNode, 2), NULL, false);
   // 一个一个判断是否重复定义后加入当前作用域的变量符号表
@@ -293,6 +311,7 @@ void handleCompSt(Node* compStNode) {
 
 /* StmtList: 检查零个或多个Stmt的组合 */
 void handleStmtList(Node* stmtListNode) {
+  if(yyget_debug()) printf("handleStmtList: %d\n", stmtListNode->lineno);
   if (stmtListNode->child != NULL) {
     handleStmt(getCertainChild(stmtListNode, 1), F_ANONY);
     handleStmtList(getCertainChild(stmtListNode, 2));
@@ -301,6 +320,7 @@ void handleStmtList(Node* stmtListNode) {
 
 /* Stmt: 检查一条语句，根据是否是条件/循环的子语句遇到CompSt则新建不同的作用域 */
 void handleStmt(Node* stmtNode, FieldType extField) {
+  if(yyget_debug()) printf("handleStmt: %d\n", stmtNode->lineno);
   if (childrenMatch(stmtNode, 1, NTN_EXP)) { // 普通语句
     handleExp(getCertainChild(stmtNode, 1)); // 不需要返回Exp类型
   } else if (childrenMatch(stmtNode, 1, NTN_COMPST)) { // 新的语句块（一定新建作用域）
@@ -331,6 +351,7 @@ void handleStmt(Node* stmtNode, FieldType extField) {
 
 /* DefList: 检查一连串定义（可能为空），需借助上一次继承的定义链表 */
 TypeNode* handleDefList(Node* defListNode, TypeNode* inhTypeNode, bool inStruct) {
+  if(yyget_debug()) printf("handleDefList: %d\n", defListNode->lineno);
   if (defListNode->child == NULL) { // 最后一次为空，直接返回之前的全部
     return inhTypeNode;
   } else { // if (childrenMatch(defListNode, 1, NTN_DEF)) { // 在继承的那部分中添加Def并传递下去
@@ -342,12 +363,14 @@ TypeNode* handleDefList(Node* defListNode, TypeNode* inhTypeNode, bool inStruct)
 
 /* Def: 检查一条局部定义；返回一个TypeNode链表 */
 TypeNode* handleDef(Node* defNode, bool inStruct) {
+  if(yyget_debug()) printf("handleDef: %d\n", defNode->lineno);
   Node* specNode = getCertainChild(defNode, 1);
   return handleDecList(getCertainChild(defNode, 2), NULL, handleSpecifier(specNode, false), inStruct);
 }
 
 /* DecList: 检查每一组逗号分割的变量名；返回一个TypeNode链表 */
 TypeNode* handleDecList(Node* decListNode, TypeNode* inhTypeNode, Type* inhType, bool inStruct) {
+  if(yyget_debug()) printf("handleDecList: %d\n", decListNode->lineno);
   Node* decNode = getCertainChild(decListNode, 1);
   TypeNode* decTypeNode = handleDec(decNode, inhType, inStruct);
   decTypeNode->next = inhTypeNode;
@@ -360,6 +383,7 @@ TypeNode* handleDecList(Node* decListNode, TypeNode* inhTypeNode, Type* inhType,
 
 /* Dec: 检查一个变量的声明（初始化分情况）；返回一个TypeNode节点 */
 TypeNode* handleDec(Node* decNode, Type* inhType, bool inStruct) {
+  if(yyget_debug()) printf("handleDec: %d\n", decNode->lineno);
   Node* varDecNode = getCertainChild(decNode, 1);
   Type* varDecType = handleVarDec(varDecNode, inhType);
   TypeNode* varTypeNode = createTypeNode(varDecType, getVarDecName(varDecNode), varDecNode->lineno, NULL);
@@ -379,6 +403,7 @@ TypeNode* handleDec(Node* decNode, Type* inhType, bool inStruct) {
 
 /* Exp: 检查表达式，返回表达式类型 */
 Type* handleExp(Node* expNode) {
+  if(yyget_debug()) printf("handleExp: %d\n", expNode->lineno);
   if (childrenMatch(expNode, 1, TN_LP)) { // 括号
     return handleExp(getCertainChild(expNode, 2));
   } else if (childrenMatch(expNode, 1, TN_INT)) { // 右值（int）
@@ -387,56 +412,165 @@ Type* handleExp(Node* expNode) {
     return createRightType(T_FLOAT);
   } else if (childrenMatch(expNode, 1, TN_ID)) {
     Node* idNode = getCertainChild(expNode, 1);
+    Type* idType = findTypeInAllVarList(idNode->cval, currentField);
     if (idNode->nextSibling == NULL) { // 返回ID对应的类型
-      Type* idType = findTypeInAllVarList(idNode->cval, currentField);
       if (idType == NULL) { // 发现未定义变量，报错1
         reportError(1, idNode->lineno, idNode->cval, NULL);
-        return createUndefinedType(); // 返回未定义类型
+        return createUndefinedType(false); // 返回未定义类型
       } else {
-        return idType; // 返回最近定义域内定义的类型
+        return typeShallowCopy(idType); // 返回最近定义域内定义的类型
       }
     } else { // 函数调用
       int index = findInSymList(idNode->cval, 0, funcSymListLen, true);
-      if (index < 0) { // 发现未定义函数，报错2
-        reportError(2, idNode->lineno, idNode->cval, NULL);
-        return createUndefinedType(); // 返回未定义类型
+      if (index < 0) { // 发现未定义函数
+        if (idType == NULL) { // 不是变量，报错2
+          reportError(2, idNode->lineno, idNode->cval, NULL);
+        } else { // 变量使用函数调用，报错11
+          reportError(11, idNode->lineno, idNode->cval, NULL);
+        }
+        return createUndefinedType(true); // 返回未定义右值类型
       } else { // 函数已定义
         Function* func = funcSymList[index].func;
         TypeNode* argTypeNode = NULL; // 实参链表
-        if (childrenMatch(expNode, 3, NTN_ARGS)) // 含参函数调用
+        if (childrenMatch(expNode, 3, NTN_ARGS)) { // 含参函数调用
           argTypeNode = handleArgs(getCertainChild(expNode, 3), NULL);
-        if (!paramEquals(func->paramNode, argTypeNode)) // 参数不匹配，报错9
+        }
+        if (!paramEquals(func->paramNode, argTypeNode)) { // 参数不匹配，报错9
           reportError(9, idNode->lineno, getArgsString(func->paramNode, func->name), getArgsString(argTypeNode, ""));
-        return func->returnType;
+        }
+        return typeShallowCopy(func->returnType);
       }
     }
-  } else if (childrenMatch(expNode, 1, TN_MINUS)) { // 取负（算术运算，int/float）
+  } else if (childrenMatch(expNode, 1, TN_MINUS)) { // 取负（算术运算，int/float），返回右值
     Type* expType = handleExp(getCertainChild(expNode, 2));
     if (expType->kind == T_UNDEFINED) { // Undefined是遗留错误，略过
       return expType;
-    } if (expType->kind == T_INT || expType->kind == T_FLOAT) { // 合法的算数运算，注意右值的“感染”
-      return expType;
+    } if (isBasicType(expType)) { // 合法的算数运算
+      return typeShallowCopy(expType);
     } else { // 不合法的算式，报错7
       reportError(7, expNode->lineno, NULL, NULL);
-      return createUndefinedType(); // 返回未定义类型
+      return createUndefinedType(true); // 返回未定义右值类型
     }
-  } else if (childrenMatch(expNode, 1, TN_NOT)) { // 取反（逻辑运算，仅int）
+  } else if (childrenMatch(expNode, 1, TN_NOT)) { // 取反（逻辑运算，仅int），返回int右值
     Type* expType = handleExp(getCertainChild(expNode, 2));
-    if (expType->kind == T_UNDEFINED) { // Undefined是遗留错误，略过
-      return expType;
-    } if (expType->kind == T_INT) { // 合法的算数运算，注意右值的“感染”
-      return expType;
+    if (expType->kind == T_UNDEFINED) { // Undefined是遗留错误，可进行类型推测，推测为int
+      return createRightType(T_INT); // 返回int类型右值
+    } if (expType->kind == T_INT) { // 合法的算数运算
+      return typeShallowCopy(expType);
     } else { // 不合法的算式，报错7
       reportError(7, expNode->lineno, NULL, NULL);
-      return createUndefinedType(); // 返回未定义类型
+      return createRightType(T_INT); // 返回int类型右值
     }
   } else { // if (childrenMatch(expNode, 1, NTN_EXP)) {
-
+    Node* opNode = getCertainChild(expNode, 2); // 运算符
+    Node* opExpNode1 = getCertainChild(expNode, 1); // 左侧运算数（Exp）
+    Node* opExpNode2 = getCertainChild(expNode, 3); // 右侧运算数（Exp/ID）
+    if (opNode->name == TN_ASSIGNOP) { // 赋值（小心右值）
+      Type* leftType = handleExp(opExpNode1);
+      Type* rightType = handleExp(opExpNode2);
+      if (leftType->isRight) { // 右值出现在左侧，报错6
+        reportError(6, opExpNode1->lineno, NULL, NULL);
+      }
+      if (rightType->kind == T_UNDEFINED) { // 遗留错误，略过
+        return typeShallowCopy(leftType);
+      } else if (leftType->kind == T_UNDEFINED) { // 遗留错误，可进行类型推测，推测为rightType
+        return typeShallowCopy(rightType);
+      }
+      if (!typeEquals(leftType, rightType)) { // 左右类型不同，报错5
+        reportError(5, opExpNode2->lineno, NULL, NULL);
+      }
+      return typeShallowCopy(leftType); // 一律取左值作为最终值
+    } else if (opNode->name == TN_PLUS || opNode->name == TN_MINUS ||
+               opNode->name == TN_STAR || opNode->name == TN_DIV) { // 加减乘除，int/float（注意右值的“感染”），返回右值
+      Type* opType1 = handleExp(opExpNode1);
+      Type* opType2 = handleExp(opExpNode2);
+      if (opType1->kind == T_UNDEFINED && opType2->kind == T_UNDEFINED) { // 遗留错误，略过
+        return opType1;
+      } else if (opType1->kind != T_UNDEFINED && opType2->kind == T_UNDEFINED) { // 遗留错误，可进行类型推测
+        opType2 = typeShallowCopy(opType1);
+      } else if (opType1->kind == T_UNDEFINED && opType2->kind != T_UNDEFINED) { // 遗留错误，可进行类型推测
+        opType1 = typeShallowCopy(opType2);
+      }
+      if (isBasicType(opType1) && isBasicType(opType2)) { // 合法的算数运算（注意右值的“感染”，和int->float扩展）
+        Type* expType = typeShallowCopy(opType1);
+        if (opType2->isRight) expType->isRight = true;
+        if (opType2->kind == T_FLOAT) expType->kind = T_FLOAT;
+        return expType;
+      } else { // 不合法的算式，报错7
+        Node* opNodeIll = opExpNode1; // 不合法的那个
+        if (isBasicType(opType1)) opNodeIll = opExpNode2;
+        reportError(7, opNodeIll->lineno, NULL, NULL);
+        return createUndefinedType(true); // 返回未定义右值类型
+      }
+    } else if (opNode->name == TN_AND || opNode->name == TN_OR) { // 逻辑运算，仅int（注意右值的“感染”），返回int类型右值
+      Type* opType1 = handleExp(opExpNode1);
+      Type* opType2 = handleExp(opExpNode2);
+      if (opType1->kind == T_UNDEFINED && opType2->kind == T_UNDEFINED) { // 遗留错误，可进行类型推测，推测为int
+        return createRightType(T_INT); // 返回int类型右值
+      } else if (opType1->kind != T_UNDEFINED && opType2->kind == T_UNDEFINED) { // 遗留错误，可进行类型推测
+        opType2 = typeShallowCopy(opType1);
+      } else if (opType1->kind == T_UNDEFINED && opType2->kind != T_UNDEFINED) { // 遗留错误，可进行类型推测
+        opType1 = typeShallowCopy(opType2);
+      }
+      if (opType1->kind == T_INT && opType2->kind == T_INT) { // 合法的算数运算（注意右值的“感染”）
+        Type* expType = typeShallowCopy(opType1);
+        if (opType2->isRight) expType->isRight = true;
+        return expType;
+      } else { // 不合法的算式，报错7
+        Node* opNodeIll = opExpNode1; // 不合法的那个
+        if (opType1->kind == T_INT) opNodeIll = opExpNode2;
+        reportError(7, opNodeIll->lineno, NULL, NULL);
+        return createRightType(T_INT); // 返回int类型右值
+      }
+    } else if (opNode->name == TN_EQ || opNode->name == TN_NE || opNode->name == TN_LE ||
+               opNode->name == TN_GE || opNode->name == TN_LT || opNode->name == TN_GT) { // RELOP，一定返回int
+      Type* opType1 = handleExp(opExpNode1);
+      Type* opType2 = handleExp(opExpNode2);
+      if (opType1->kind == T_UNDEFINED && opType2->kind == T_UNDEFINED) { // 遗留错误，可进行类型推测为int
+        return createRightType(T_INT); // 返回int类型右值
+      } else if (opType1->kind != T_UNDEFINED && opType2->kind == T_UNDEFINED) { // 遗留错误，可进行类型推测
+        opType2 = typeShallowCopy(opType1);
+      } else if (opType1->kind == T_UNDEFINED && opType2->kind != T_UNDEFINED) { // 遗留错误，可进行类型推测
+        opType1 = typeShallowCopy(opType2);
+      }
+      if (isBasicType(opType1) && isBasicType(opType2)) { // 合法的关系运算
+        return createRightType(T_INT); // 返回int类型右值
+      } else { // 不合法的算式，报错7
+        Node* opNodeIll = opExpNode1; // 不合法的那个
+        if (isBasicType(opType1)) opNodeIll = opExpNode2;
+        reportError(7, opNodeIll->lineno, NULL, NULL);
+        return createRightType(T_INT); // 返回int类型右值
+      }
+    } else if (opNode->name == TN_DOT) { // 结构体访问，返回非右值
+      Type* structType = handleExp(opExpNode1);
+      if (structType->kind != T_STRUCT) { // 非结构体，报错13
+        reportError(13, opNode->lineno, NULL, NULL);
+        return createUndefinedType(false);
+      }
+      TypeNode* structTypeNode = findInTypeNode(opExpNode2->cval, structType->structure.node);
+      if (structTypeNode == NULL) { // 不存在此域名，报错14
+        reportError(14, opExpNode2->lineno, opExpNode2->cval, NULL);
+        return createUndefinedType(false);
+      }
+      return typeShallowCopy(structTypeNode->type);
+    } else { // 数组访问，返回非右值
+      Type* arrayType = handleExp(opExpNode1);
+      Type* indexType = handleExp(opExpNode2);
+      if (arrayType->kind != T_ARRAY) { // 非数组，报错10
+        reportError(10, opNode->lineno, getExpString(opExpNode1), NULL);
+        return createUndefinedType(false);
+      }
+      if (indexType->kind != T_INT) { // 非整数下标，报错12（返回类型推测为数组元素类型）
+        reportError(12, opNode->lineno, getExpString(opExpNode2), NULL);
+      }
+      return typeShallowCopy(arrayType->array.eleType);
+    }
   }
 }
 
 /* Args: 检查实参列表，用于函数调用表达式，每个实参都可以变成一个表达式Exp；返回的匿名的TypeNode链表 */
 TypeNode* handleArgs(Node* argsNode, TypeNode* inhTypeNode) {
+  if(yyget_debug()) printf("handleArgs: %d\n", argsNode->lineno);
   Node* expNode = getCertainChild(argsNode, 1);
   Type* expType = handleExp(expNode);
   TypeNode* expTypeNode = createTypeNode(expType, "", expNode->lineno, inhTypeNode);

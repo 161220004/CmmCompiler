@@ -263,6 +263,15 @@ void addToVarList(TypeNode* addVar, SymElem* varList, int varListLen) {
   }
 }
 
+/* 从TypeNode链表中查询，返回查询的节点，没有则返回NULL */
+TypeNode* findInTypeNode(char* name, TypeNode* typeNode) {
+  while (typeNode != NULL) {
+    if (strcmp(name, typeNode->name) == 0) return typeNode;
+    else typeNode = typeNode->next;
+  }
+  return NULL;
+}
+
 /* 从有序函数/结构体符号表中查询，返回下标；没有则返回-1 */
 int findInSymList(char* name, int start, int end, bool isFunc) { // end是最后一个下标+1
   if (start >= end) return -1;
@@ -311,9 +320,10 @@ Type* findTypeInAllVarList(char* name, FieldNode* field) {
 }
 
 /* 新建未定义类型 */
-Type* createUndefinedType() {
+Type* createUndefinedType(bool isRight) {
   Type* undefinedType = (Type*)malloc(sizeof(Type));
   undefinedType->kind = T_UNDEFINED;
+  undefinedType->isRight = isRight;
   return undefinedType;
 }
 
@@ -326,14 +336,10 @@ Type* createRightType(Kind kind) {
 }
 
 /* 新建基本类型（int/float） */
-Type* createBasicType(char* typeStr) {
+Type* createBasicType(Kind kind) {
   Type* basicType = (Type*)malloc(sizeof(Type));
   basicType->isRight = false;
-  if (strcmp("int", typeStr) == 0) { // int
-    basicType->kind = T_INT;
-  } else if (strcmp("float", typeStr) == 0) { // float
-    basicType->kind = T_FLOAT;
-  }
+  basicType->kind = kind;
   return basicType;
 }
 
@@ -424,18 +430,37 @@ char* getArgsString(TypeNode* paramNode, char* funcName) {
   return result;
 }
 
+/* 辅助获取Exp字符串 */
+char* getTmpExpString(Node* expNode, char* inhStr) {
+  Node* child = expNode->child;
+  while (child != NULL) {
+    if (child->name == NTN_EXP) inhStr = getTmpExpString(child, inhStr);
+    else if (child->name == NTN_ARGS) inhStr = strcat(inhStr, "...");
+    else inhStr = strcat(inhStr, child->cval);
+  }
+  return inhStr;
+}
+
+/* 获取Exp字符串 */
+char* getExpString(Node* expNode) {
+  char* result = (char*)malloc(64 * sizeof(char));
+  return getTmpExpString(expNode, result);
+}
+
+/* 检查是否是基本类型 */
+bool isBasicType(Type* type) {
+  if (type->kind == T_INT || type->kind == T_FLOAT) return true;
+  else return false;
+}
+
 /* 检查两个类型是否一致 */
 bool typeEquals(Type* type1, Type* type2) {
   if (type1->kind != type2->kind) return false;
   switch (type1->kind) {
-    case T_ARRAY:
-      if (type1->array.length == type2->array.length) {
-        return typeEquals(type1->array.eleType, type2->array.eleType);
-      } else return false; // 数组长度不同不能视为等价
-      break;
+    case T_ARRAY: // 只看基类型和维数，不管数组长度
+      return typeEquals(type1->array.eleType, type2->array.eleType);
     case T_STRUCT: // 域的顺序和类型都相同
       return paramEquals(type1->structure.node, type2->structure.node);
-      break;
     case T_UNDEFINED: return false; // 两个未定义类型不等
     default: return true; // 这里基本类型不考虑右值
   }

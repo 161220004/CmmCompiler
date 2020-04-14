@@ -31,8 +31,8 @@ struct Node {
   union { /* 根据不同的数据类型存储不同的值 */
 		int ival; /* int */
 		double fval; /* float */
-    char* cval; /* ID或Type */
 	};
+  char* cval; /* ID或Type或int/float等等 */
   Node* child;
 	Node* nextSibling;
 };

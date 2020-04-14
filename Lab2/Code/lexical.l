@@ -187,22 +187,22 @@ err_id       ({letter_}|{digit})+
 }
 
 {uint16} {
-  yylval = createTerminalNode(TN_INT, yylloc.first_line, yylloc.first_column, INT_VAL, (int)strtol(yytext, NULL, 16));
+  yylval = createTerminalNode(TN_INT, yylloc.first_line, yylloc.first_column, INT_VAL, (int)strtol(yytext, NULL, 16), yytext);
   return INT;
 }
 
 {uint8} {
-  yylval = createTerminalNode(TN_INT, yylloc.first_line, yylloc.first_column, INT_VAL, (int)strtol(yytext, NULL, 8));
+  yylval = createTerminalNode(TN_INT, yylloc.first_line, yylloc.first_column, INT_VAL, (int)strtol(yytext, NULL, 8), yytext);
   return INT;
 }
 
 {uint} {
-  yylval = createTerminalNode(TN_INT, yylloc.first_line, yylloc.first_column, INT_VAL, (int)strtol(yytext, NULL, 10));
+  yylval = createTerminalNode(TN_INT, yylloc.first_line, yylloc.first_column, INT_VAL, (int)strtol(yytext, NULL, 10), yytext);
   return INT;
 }
 
 {ufloat} {
-  yylval = createTerminalNode(TN_FLOAT, yylloc.first_line, yylloc.first_column, FLOAT_VAL, atof(yytext));
+  yylval = createTerminalNode(TN_FLOAT, yylloc.first_line, yylloc.first_column, FLOAT_VAL, atof(yytext), yytext);
   return FLOAT;
 }
 

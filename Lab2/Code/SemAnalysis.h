@@ -65,6 +65,7 @@ struct SymElem {
   };
 };
 
+void semanticAnalysis();
 void handleProgram();
 void handleExtDefList(Node* extDefListNode);
 void handleExtDef(Node* extDefNode);

@@ -14,6 +14,15 @@ char* getStrncpy(char* str) {
   return cp;
 }
 
+char* NodeSymbolStr[53] = {
+  "Program", "ExtDefList", "ExtDef", "ExtDecList", "Specifier", "StructSpecifier",
+  "OptTag", "Tag", "VarDec", "FunDec", "VarList", "ParamDec", "CompSt",
+  "StmtList", "Stmt", "DefList", "Def", "DecList", "Dec", "Exp", "Args",
+  ";", ",", "==", "!=", "<=", ">=", "<", ">", "=", "+", "-",
+  "*", "/", "&&", "||", "!", "(", ")", "[", "]", "{", "}", ".",
+  "TYPE", "ID", "INT", "FLOAT", "struct", "return", "if", "else", "while"
+};
+
 Node* createTerminalNode(NodeName tName, int lineno, int colno, ValueType valType, ...) {
   Node *terminal = malloc(sizeof(Node));
   terminal->name = tName;
@@ -26,13 +35,15 @@ Node* createTerminalNode(NodeName tName, int lineno, int colno, ValueType valTyp
 	va_start(val, valType);
   if (valType == INT_VAL) {
     terminal->ival = va_arg(val, int);
+    terminal->cval = getStrncpy(va_arg(val, char*));
   } else if (valType == FLOAT_VAL) {
     terminal->fval = va_arg(val, double);
+    terminal->cval = getStrncpy(va_arg(val, char*));
   } else if (valType == ID_VAL || valType == TYPE_VAL) {
     char* cval = va_arg(val, char*);
     terminal->cval = getStrncpy(cval);
-  } else {
-    /* NO_Val */
+  } else { // NO_Val, 为其他的cval里填入对应符号
+    terminal->cval = NodeSymbolStr[tName];
   }
   va_end(val);
   terminal->child = NULL;
@@ -47,6 +58,8 @@ Node* createNonTerminalNode(NodeName ntName, int lineno, int colno, int num, ...
   nonterminal->lineno = lineno;
   nonterminal->colno = colno;
   nonterminal->valType = NO_VAL;
+  nonterminal->cval = NodeSymbolStr[ntName];
+  nonterminal->child = NULL;
   // 子节点依次连接到父节点
   va_list children;
 	va_start(children, num);
