@@ -246,6 +246,7 @@ void addToVarList(TypeNode* addVar, SymElem* varList, int varListLen) {
       varList[i].isNull = false;
       varList[i].name = addVar->name;
       varList[i].type = addVar->type;
+      break; // 结束
     } else { // 比较大小，保持有序
       int result = strcmp(addVar->name, varList[i].name);
       if (result < 0) { // 新函数名小于i处函数名，则i之后全部后移出空位给i
@@ -259,8 +260,16 @@ void addToVarList(TypeNode* addVar, SymElem* varList, int varListLen) {
         varList[i].isNull = false;
         varList[i].name = addVar->name;
         varList[i].type = addVar->type;
+        break; // 结束
       }
     }
+  }
+  if (yyget_debug()) {
+    printf("addToVarList: ");
+    for (int i = 0; i < varListLen; i++) {
+      if (!varList[i].isNull) printf("\"%s\" -> ", varList[i].name);
+    }
+    printf("NULL\n");
   }
 }
 
