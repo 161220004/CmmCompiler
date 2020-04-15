@@ -520,6 +520,21 @@ void printType(Type* type, bool toNewLine) {
   if (toNewLine) printf("\n");
 }
 
+/* DEBUG: 打印Struct类型详细信息 */
+void printStruct(Type* type) {
+  if (type->kind == T_STRUCT) {
+    printf("Struct %s {", type->structure.name);
+    TypeNode* structNode = type->structure.node;
+    while (structNode != NULL) {
+      printf("\"%s\": ", structNode->name);
+      printType(structNode->type, false);
+      structNode = structNode->next;
+      if (structNode != NULL) printf(", ");
+    }
+    printf("}\n");
+  }
+}
+
 /* DEBUG: 打印TypeNode */
 void printTypeNode(TypeNode* typeNode, bool toNewLine) {
   while (typeNode != NULL) {

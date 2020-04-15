@@ -229,6 +229,10 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
       }
       structNode = structNode->next;
     }
+    if (yyget_debug()) {
+      printf("Struct Definition: \n  ");
+      printStruct(structType);
+    }
     return structType;
   } else { // if (childrenMatch(structSpecNode, 2, NTN_TAG)) { // 结构体仅声明（无内容定义）
     Node* idNode = getCertainChild(getCertainChild(structSpecNode, 2), 1);
