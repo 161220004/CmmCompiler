@@ -207,10 +207,8 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
     } else { // if (childrenMatch(optTagNode, 1, TN_ID)) { // 获取ID作为结构体名
       structName = getStrncpy(getCertainChild(optTagNode, 1)->cval);
     }
-    // 获取域链表
-    TypeNode* structNode = handleDefList(getCertainChild(structSpecNode, 4), NULL, true);
-    // 创建结构体类型
-    Type* structType = createStructType(structName, structNode);
+    // 创建结构体类型（域暂时为空）
+    Type* structType = createStructType(structName);
     // 添加结构体名到结构体符号表数组
     if (findInSymList(structName, 0, structSymListLen, false) < 0) { // 第一次出现
       addToStructList(structType);
@@ -220,14 +218,16 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
     if (findTypeInAllVarList(structName, currentField) != NULL) { // 检查与变量重名，报错16
       reportError(16, optTagNode->lineno, structName, NULL);
     }
+    // 获取域链表
+    TypeNode* structNode = handleDefList(getCertainChild(structSpecNode, 4), NULL, true);
+    structType->structure.node = structNode;
     // 查找域链表是否存在重名（重名不必删除）
-    TypeNode* structField = structType->structure.node;
-    while (structField != NULL) {
-      TypeNode* dupStructField = findInTypeNode(structField->name, structField->next);
+    while (structNode != NULL) {
+      TypeNode* dupStructField = findInTypeNode(structNode->name, structNode->next);
       if (dupStructField != NULL) { // 重名报错15
-        reportError(15, structField->lineno, structField->name, NULL);
+        reportError(15, structNode->lineno, structNode->name, NULL);
       }
-      structField = structField->next;
+      structNode = structNode->next;
     }
     return structType;
   } else { // if (childrenMatch(structSpecNode, 2, NTN_TAG)) { // 结构体仅声明（无内容定义）
@@ -238,7 +238,7 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
       if (!isSemi) { // 若不是特殊情况如“struct A;”，即定义变量，报错17
         reportError(17, idNode->lineno, idNode->cval, NULL);
       }
-      return createStructType(idNode->cval, NULL); // 作为一个“空”结构体返回以便程序继续运行
+      return createStructType(idNode->cval); // 作为一个“空”结构体返回以便程序继续运行
     } else { // 已经定义过
       return structSymList[index].type;
     }

@@ -175,7 +175,9 @@ int getRoughGloVarNum(Node* extDefListNode) {
     if (childrenMatch(extDefNode, 2, NTN_EXTDECLIST)) {
       return (getCertainNum(getCertainChild(extDefNode, 2), NTN_VARDEC)
             + getRoughGloVarNum(getCertainChild(extDefListNode, 2)));
-    } else return 0;
+    } else {
+      return getRoughGloVarNum(getCertainChild(extDefListNode, 2));
+    }
   }
 }
 
@@ -371,11 +373,11 @@ Type* createArrayType(int length, Type* eleType) {
   return arrayType;
 }
 
-/* 新建结构体类型 */
-Type* createStructType(char* name, TypeNode* typeNode) {
+/* 新建空的结构体类型 */
+Type* createStructType(char* name) {
   Type* structType = (Type*)malloc(sizeof(Type));
   structType->kind = T_STRUCT;
-  structType->structure.node = typeNode;
+  structType->structure.node = NULL;
   structType->structure.name = name;
   return structType;
 }

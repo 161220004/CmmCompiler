@@ -36,7 +36,7 @@ Type* createUndefinedType(bool isRight);
 Type* createRightType(Kind kind);
 Type* createBasicType(Kind kind);
 Type* createArrayType(int length, Type* eleType);
-Type* createStructType(char* name, TypeNode* typeNode);
+Type* createStructType(char* name);
 TypeNode* createTypeNode(Type* type, char* name, int lineno, TypeNode* next);
 Function* createFunction(char* name, int lineno, bool isDefined, Type* returnType, TypeNode* paramNode);
 FieldNode* createChildField(FieldType type, int varListLen, Function* func);
