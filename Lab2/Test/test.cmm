@@ -1,14 +1,11 @@
-struct {
-  int a;
-  float b;
-} tmp;
-
-float arg1;
-
-int func(int a1, int a2);
-
-int func(int arg1, int arg2)
+struct Position
 {
-  int i = 0;
-  j = i + 1;
+float x,y;
+};
+
+int func(int a);
+
+int func(struct Position p);
+int main()
+{
 }

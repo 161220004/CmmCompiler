@@ -76,7 +76,6 @@ void handleProgram() {
 
 /* ExtDefList: 检查一系列全局变量、结构体或函数的定义 */
 void handleExtDefList(Node* extDefListNode) {
-  if(yyget_debug()) printf("handleExtDefList: %d\n", extDefListNode->lineno);
   if (extDefListNode->child != NULL) { // 还存在未处理的定义
     handleExtDef(getCertainChild(extDefListNode, 1));
     handleExtDefList(getCertainChild(extDefListNode, 2));
@@ -85,7 +84,6 @@ void handleExtDefList(Node* extDefListNode) {
 
 /* ExtDef: 检查一个全局变量、结构体或函数的定义 */
 void handleExtDef(Node* extDefNode) {
-  if(yyget_debug()) printf("handleExtDef: %d\n", extDefNode->lineno);
   if (childrenMatch(extDefNode, 2, NTN_EXTDECLIST)) { // 任意类型全局变量(包括结构体变量)声明
     Type* specType = handleSpecifier(getCertainChild(extDefNode, 1), false); // 获取该全局变量的类型
     // 获取定义的全部变量
@@ -120,6 +118,7 @@ void handleExtDef(Node* extDefNode) {
           reportError(19, funcNode->lineno, idNode->cval, NULL);
         }
       }
+      if(yyget_debug()) printFunction(decFunc, true);
     } else { // if (childrenMatch(extDefNode, 3, NTN_COMPST)) { // 函数定义
       Function* defFunc = handleFunDec(funcNode, returnType, true);
       if (index < 0) { // 首次出现，添加到函数符号表
@@ -144,13 +143,13 @@ void handleExtDef(Node* extDefNode) {
       currentField = funcField; // 当前作用域置为函数作用域
       handleCompSt(compStNode); // 开始进入函数作用域内部进行分析
       currentField = currentField->parent; // 解决完函数内部后重置作用域到外部
+      if(yyget_debug()) printFunction(defFunc, true);
     }
   }
 }
 
 /* ExtDecList: 检查零个或多个对一个全局变量的定义VarDec；返回定义后的链表 */
 TypeNode* handleExtDecList(Node* extDecListNode, TypeNode* inhTypeNode, Type* inhType) {
-  if(yyget_debug()) printf("handleExtDecList: %d\n", extDecListNode->lineno);
   Node* varDecNode = getCertainChild(extDecListNode, 1);
   Type* varDecType = handleVarDec(varDecNode, inhType);
   TypeNode* varTypeNode = createTypeNode(varDecType, getVarDecName(varDecNode), varDecNode->lineno, inhTypeNode);
@@ -163,7 +162,6 @@ TypeNode* handleExtDecList(Node* extDecListNode, TypeNode* inhTypeNode, Type* in
 
 /* Specifier: 检查类型定义（基本/结构体），isSemi特指“Specifier SEMI”的特殊情况 */
 Type* handleSpecifier(Node* specNode, bool isSemi) {
-  if(yyget_debug()) printf("handleSpecifier: %d\n", specNode->lineno);
   if (childrenMatch(specNode, 1, TN_TYPE)) { // 子节点为基本类型（int/float）
     char* kindStr = getCertainChild(specNode, 1)->cval;
     Kind kind = T_INT;
@@ -176,7 +174,6 @@ Type* handleSpecifier(Node* specNode, bool isSemi) {
 
 /* StructSpecifier: 检查结构体类型定义 */
 Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
-  if(yyget_debug()) printf("handleStructSpecifier: %d\n", structSpecNode->lineno);
   if (childrenMatch(structSpecNode, 2, NTN_OPTTAG)) { // 有结构体具体定义
     // 获取结构体名
     char* structName = NULL;
@@ -226,7 +223,6 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
 
 /* VarDec: 检查变量定义（基本/数组），需借助上一次继承的类型 */
 Type* handleVarDec(Node* varDecNode, Type* inhType)  {
-  if(yyget_debug()) printf("handleVarDec: %d\n", varDecNode->lineno);
   if (childrenMatch(varDecNode, 1, TN_ID)) { // 最后获得一个ID，直接返回前面的继承属性
     return typeShallowCopy(inhType);
   } else { // if (childrenMatch(varDecNode, 1, NTN_VARDEC)) { // 操作数组
@@ -246,7 +242,6 @@ char* getVarDecName(Node* varDecNode) {
 
 /* FunDec: 检查对一个函数头的定义 */
 Function* handleFunDec(Node* funDecNode, Type* returnType, bool isDefined) {
-  if(yyget_debug()) printf("handleFunDec: %d\n", funDecNode->lineno);
   Node* idNode = getCertainChild(funDecNode, 1);
   if (childrenMatch(funDecNode, 3, NTN_VARLIST)) { // 有参数
     TypeNode* paramNode = handleVarList(getCertainChild(funDecNode, 3), NULL);
@@ -270,7 +265,6 @@ Function* handleFunDec(Node* funDecNode, Type* returnType, bool isDefined) {
 
 /* VarList: 检查函数的一个或多个形参；返回形参链表 */
 TypeNode* handleVarList(Node* varListNode, TypeNode* inhTypeNode) {
-  if(yyget_debug()) printf("handleVarList: %d\n", varListNode->lineno);
   Node* paramDecNode = getCertainChild(varListNode, 1);
   TypeNode* paramTypeNode = handleParamDec(paramDecNode);
   paramTypeNode->next = inhTypeNode;
@@ -283,7 +277,6 @@ TypeNode* handleVarList(Node* varListNode, TypeNode* inhTypeNode) {
 
 /* ParamDec: 检查对一个形参的定义，为类型描述符+变量名；返回形参节点 */
 TypeNode* handleParamDec(Node* paramDecNode) {
-  if(yyget_debug()) printf("handleParamDec: %d\n", paramDecNode->lineno);
   Type* paramType = handleSpecifier(getCertainChild(paramDecNode, 1), false);
   Node* varDecNode = getCertainChild(paramDecNode, 2);
   Type* varDecType = handleVarDec(varDecNode, paramType);
@@ -292,7 +285,6 @@ TypeNode* handleParamDec(Node* paramDecNode) {
 
 /* CompSt: 检查一个由一对花括号括起来的语句块，其中全部局部变量的定义必须在全部语句之前 */
 void handleCompSt(Node* compStNode) {
-  if(yyget_debug()) printf("handleCompSt: %d\n", compStNode->lineno);
   // 处理定义部分，获取全部变量声明
   TypeNode* defTypeNode = handleDefList(getCertainChild(compStNode, 2), NULL, false);
   // 一个一个判断是否重复定义后加入当前作用域的变量符号表
@@ -311,7 +303,6 @@ void handleCompSt(Node* compStNode) {
 
 /* StmtList: 检查零个或多个Stmt的组合 */
 void handleStmtList(Node* stmtListNode) {
-  if(yyget_debug()) printf("handleStmtList: %d\n", stmtListNode->lineno);
   if (stmtListNode->child != NULL) {
     handleStmt(getCertainChild(stmtListNode, 1), F_ANONY);
     handleStmtList(getCertainChild(stmtListNode, 2));
@@ -320,7 +311,6 @@ void handleStmtList(Node* stmtListNode) {
 
 /* Stmt: 检查一条语句，根据是否是条件/循环的子语句遇到CompSt则新建不同的作用域 */
 void handleStmt(Node* stmtNode, FieldType extField) {
-  if(yyget_debug()) printf("handleStmt: %d\n", stmtNode->lineno);
   if (childrenMatch(stmtNode, 1, NTN_EXP)) { // 普通语句
     handleExp(getCertainChild(stmtNode, 1)); // 不需要返回Exp类型
   } else if (childrenMatch(stmtNode, 1, NTN_COMPST)) { // 新的语句块（一定新建作用域）
@@ -351,7 +341,6 @@ void handleStmt(Node* stmtNode, FieldType extField) {
 
 /* DefList: 检查一连串定义（可能为空），需借助上一次继承的定义链表 */
 TypeNode* handleDefList(Node* defListNode, TypeNode* inhTypeNode, bool inStruct) {
-  if(yyget_debug()) printf("handleDefList: %d\n", defListNode->lineno);
   if (defListNode->child == NULL) { // 最后一次为空，直接返回之前的全部
     return inhTypeNode;
   } else { // if (childrenMatch(defListNode, 1, NTN_DEF)) { // 在继承的那部分中添加Def并传递下去
@@ -363,14 +352,12 @@ TypeNode* handleDefList(Node* defListNode, TypeNode* inhTypeNode, bool inStruct)
 
 /* Def: 检查一条局部定义；返回一个TypeNode链表 */
 TypeNode* handleDef(Node* defNode, bool inStruct) {
-  if(yyget_debug()) printf("handleDef: %d\n", defNode->lineno);
   Node* specNode = getCertainChild(defNode, 1);
   return handleDecList(getCertainChild(defNode, 2), NULL, handleSpecifier(specNode, false), inStruct);
 }
 
 /* DecList: 检查每一组逗号分割的变量名；返回一个TypeNode链表 */
 TypeNode* handleDecList(Node* decListNode, TypeNode* inhTypeNode, Type* inhType, bool inStruct) {
-  if(yyget_debug()) printf("handleDecList: %d\n", decListNode->lineno);
   Node* decNode = getCertainChild(decListNode, 1);
   TypeNode* decTypeNode = handleDec(decNode, inhType, inStruct);
   decTypeNode->next = inhTypeNode;
@@ -383,7 +370,6 @@ TypeNode* handleDecList(Node* decListNode, TypeNode* inhTypeNode, Type* inhType,
 
 /* Dec: 检查一个变量的声明（初始化分情况）；返回一个TypeNode节点 */
 TypeNode* handleDec(Node* decNode, Type* inhType, bool inStruct) {
-  if(yyget_debug()) printf("handleDec: %d\n", decNode->lineno);
   Node* varDecNode = getCertainChild(decNode, 1);
   Type* varDecType = handleVarDec(varDecNode, inhType);
   TypeNode* varTypeNode = createTypeNode(varDecType, getVarDecName(varDecNode), varDecNode->lineno, NULL);
@@ -403,7 +389,6 @@ TypeNode* handleDec(Node* decNode, Type* inhType, bool inStruct) {
 
 /* Exp: 检查表达式，返回表达式类型 */
 Type* handleExp(Node* expNode) {
-  if(yyget_debug()) printf("handleExp: %d\n", expNode->lineno);
   if (childrenMatch(expNode, 1, TN_LP)) { // 括号
     return handleExp(getCertainChild(expNode, 2));
   } else if (childrenMatch(expNode, 1, TN_INT)) { // 右值（int）
@@ -468,7 +453,7 @@ Type* handleExp(Node* expNode) {
     if (opNode->name == TN_ASSIGNOP) { // 赋值（小心右值）
       Type* leftType = handleExp(opExpNode1);
       Type* rightType = handleExp(opExpNode2);
-      if (leftType->isRight) { // 右值出现在左侧，报错6
+      if (isBasicType(leftType) && leftType->isRight) { // 右值出现在左侧，报错6
         reportError(6, opExpNode1->lineno, NULL, NULL);
       }
       if (rightType->kind == T_UNDEFINED) { // 遗留错误，略过
@@ -491,10 +476,10 @@ Type* handleExp(Node* expNode) {
       } else if (opType1->kind == T_UNDEFINED && opType2->kind != T_UNDEFINED) { // 遗留错误，可进行类型推测
         opType1 = typeShallowCopy(opType2);
       }
-      if (isBasicType(opType1) && isBasicType(opType2)) { // 合法的算数运算（注意右值的“感染”，和int->float扩展）
+      if (isBasicType(opType1) && isBasicType(opType2) &&
+          opType1->kind == opType2->kind) { // 必须操作数类型完全相同才合法（注意右值的“感染”）
         Type* expType = typeShallowCopy(opType1);
         if (opType2->isRight) expType->isRight = true;
-        if (opType2->kind == T_FLOAT) expType->kind = T_FLOAT;
         return expType;
       } else { // 不合法的算式，报错7
         Node* opNodeIll = opExpNode1; // 不合法的那个
@@ -570,7 +555,6 @@ Type* handleExp(Node* expNode) {
 
 /* Args: 检查实参列表，用于函数调用表达式，每个实参都可以变成一个表达式Exp；返回的匿名的TypeNode链表 */
 TypeNode* handleArgs(Node* argsNode, TypeNode* inhTypeNode) {
-  if(yyget_debug()) printf("handleArgs: %d\n", argsNode->lineno);
   Node* expNode = getCertainChild(argsNode, 1);
   Type* expType = handleExp(expNode);
   TypeNode* expTypeNode = createTypeNode(expType, "", expNode->lineno, inhTypeNode);

@@ -7,11 +7,11 @@
 #include <string.h>
 
 /* 类型：包括 int，float，数组，结构体，未定义 */
-typedef enum { T_INT, T_FLOAT, T_ARRAY, T_STRUCT, T_UNDEFINED } Kind;
+typedef enum { T_INT = 0, T_FLOAT, T_ARRAY, T_STRUCT, T_UNDEFINED } Kind;
 
 /* 作用域类型：包括全局作用域，局部作用域（函数/条件/循环/其他） */
 typedef enum {
-  F_GLOBAL, F_FUNCTION, F_COND_LOOP, F_ANONY
+  F_GLOBAL = 0, F_FUNCTION, F_COND_LOOP, F_ANONY
 } FieldType;
 
 typedef struct Type Type;

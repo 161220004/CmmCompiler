@@ -266,10 +266,7 @@ void addToVarList(TypeNode* addVar, SymElem* varList, int varListLen) {
   }
   if (yyget_debug()) {
     printf("addToVarList: ");
-    for (int i = 0; i < varListLen; i++) {
-      if (!varList[i].isNull) printf("\"%s\" -> ", varList[i].name);
-    }
-    printf("NULL\n");
+    printSymList(varListLen, varList, true);
   }
 }
 
@@ -436,7 +433,8 @@ char* getArgsString(TypeNode* paramNode, char* funcName) {
       case T_ARRAY: strcat(result, "array"); break;
       default: strcat(result, "undefined");
     }
-    strcat(result, ", ");
+    paramNode = paramNode->next;
+    if (paramNode != NULL) strcat(result, ", ");
   }
   strcat(result, ")");
   return result;
@@ -449,6 +447,7 @@ char* getTmpExpString(Node* expNode, char* inhStr) {
     if (child->name == NTN_EXP) inhStr = getTmpExpString(child, inhStr);
     else if (child->name == NTN_ARGS) inhStr = strcat(inhStr, "...");
     else inhStr = strcat(inhStr, child->cval);
+    child = child->nextSibling;
   }
   return inhStr;
 }
@@ -488,4 +487,64 @@ bool paramEquals(TypeNode* param1, TypeNode* param2) {
   }
   if (param1 == NULL && param2 == NULL) return true; // 同时结束
   else return false;
+}
+
+/* DEBUG: 打印类型 */
+void printType(Type* type, bool toNewLine) {
+  switch (type->kind) {
+    case T_INT: printf("Int");  break;
+    case T_FLOAT: printf("Float"); break;
+    case T_ARRAY:
+      printf("Array(");
+      printType(type->array.eleType, false);
+      printf(", %d)", type->array.length);
+      break;
+    case T_STRUCT: printf("Struct %s", type->structure.name); break;
+    default: printf("Undefined");
+  }
+  if (toNewLine) printf("\n");
+}
+
+/* DEBUG: 打印TypeNode */
+void printTypeNode(TypeNode* typeNode, bool toNewLine) {
+  while (typeNode != NULL) {
+    printf("[\"%s\"(%d): ", typeNode->name, typeNode->lineno);
+    printType(typeNode->type, false);
+    printf("] -> ");
+    typeNode = typeNode->next;
+  }
+  if (toNewLine) printf("NULL\n");
+  else printf("NULL");
+}
+
+/* DEBUG: 打印函数 */
+void printFunction(Function* func, bool toNewLine) {
+  printf("Function(\"%s\", return: ", func->name);
+  printType(func->returnType, false);
+  printf(", params: ");
+  printTypeNode(func->paramNode, false);
+  if (toNewLine) printf(")\n");
+  else printf(")");
+}
+
+/* DEBUG: 打印符号表 */
+void printSymList(int symListLen, SymElem* symList, bool toNewLine) {
+  for (int i = 0; i < symListLen; i++) {
+    if (!symList[i].isNull) printf("[\"%s\"] -> ", symList[i].name);
+    else break;
+  }
+  if (toNewLine) printf("NULL\n");
+  else printf("NULL");
+}
+
+char* fieldTypeStr[4] = {"Global", "Func", "Cond/Loop", "Anony"};
+/* DEBUG: 打印一个作用域 */
+void printFieldNode(FieldNode* field) {
+  printf("Field{%s, SymList: ", fieldTypeStr[field->type]);
+  printSymList(field->varListLen, field->varSymList, false);
+  if (field->type == F_FUNCTION) {
+    printf(", ");
+    printFunction(field->func, false);
+  }
+  printf("}\n");
 }

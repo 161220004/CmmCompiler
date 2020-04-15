@@ -45,5 +45,10 @@ char* getExpString(Node* expNode);
 bool isBasicType(Type* type);
 bool typeEquals(Type* type1, Type* type2);
 bool paramEquals(TypeNode* param1, TypeNode* param2);
+void printType(Type* type, bool toNewLine);
+void printTypeNode(TypeNode* typeNode, bool toNewLine);
+void printFunction(Function* func, bool toNewLine);
+void printSymList(int symListLen, SymElem* symList, bool toNewLine);
+void printFieldNode(FieldNode* field);
 
 #endif
