@@ -553,7 +553,7 @@ void printSymList(int symListLen, SymElem* symList, bool toNewLine) {
 char* fieldTypeStr[4] = {"Global", "Func", "Cond/Loop", "Anony"};
 /* DEBUG: 打印一个作用域 */
 void printFieldNode(FieldNode* field) {
-  printf("Field {%s, SymList: ", fieldTypeStr[field->type]);
+  printf("Field %s {SymList: ", fieldTypeStr[field->type]);
   printSymList(field->varListLen, field->varSymList, false);
   if (field->type == F_FUNCTION) {
     printf(", ");

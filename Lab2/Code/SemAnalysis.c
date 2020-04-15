@@ -481,7 +481,7 @@ Type* handleExp(Node* expNode) {
     if (opNode->name == TN_ASSIGNOP) { // 赋值（小心右值）
       Type* leftType = handleExp(opExpNode1);
       Type* rightType = handleExp(opExpNode2);
-      if (isBasicType(leftType) && leftType->isRight) { // 右值出现在左侧，报错6
+      if ((isBasicType(leftType) || leftType->kind == T_UNDEFINED) && leftType->isRight) { // 右值出现在左侧，报错6
         reportError(6, opExpNode1->lineno, NULL, NULL);
       }
       if (rightType->kind == T_UNDEFINED) { // 遗留错误，略过
