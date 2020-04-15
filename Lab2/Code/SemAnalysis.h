@@ -33,6 +33,7 @@ struct Type {
 /* 函数信息 */
 struct Function {
   char* name; // 函数名
+  int lineno; // 所在行数（函数名位置）
   bool isDefined; // 是否定义（一旦存在，默认已经声明）
   Type* returnType; // 返回类型
   TypeNode* paramNode; // 参数链表

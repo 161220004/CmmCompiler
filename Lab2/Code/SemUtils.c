@@ -196,6 +196,7 @@ void addToFuncList(Function* func) {
       funcSymList[i].isNull = false;
       funcSymList[i].name = func->name;
       funcSymList[i].func = func;
+      break;
     } else { // 比较大小，保持有序
       int result = strcmp(func->name, funcSymList[i].name);
       if (result < 0) { // 新函数名小于i处函数名，则i之后全部后移出空位给i
@@ -209,8 +210,13 @@ void addToFuncList(Function* func) {
         funcSymList[i].isNull = false;
         funcSymList[i].name = func->name;
         funcSymList[i].func = func;
+        break;
       }
     }
+  }
+  if (yyget_debug()) {
+    printf("addToFuncList: ");
+    printSymList(funcSymListLen, funcSymList, true);
   }
 }
 
@@ -221,6 +227,7 @@ void addToStructList(Type* type) {
       structSymList[i].isNull = false;
       structSymList[i].name = type->structure.name;
       structSymList[i].type = type;
+      break;
     } else { // 比较大小，保持有序
       int result = strcmp(type->structure.name, structSymList[i].name);
       if (result < 0) { // 新函数名小于i处函数名，则i之后全部后移出空位给i
@@ -234,8 +241,13 @@ void addToStructList(Type* type) {
         structSymList[i].isNull = false;
         structSymList[i].name = type->structure.name;
         structSymList[i].type = type;
+        break;
       }
     }
+  }
+  if (yyget_debug()) {
+    printf("addToStructList: ");
+    printSymList(structSymListLen, structSymList, true);
   }
 }
 
@@ -379,9 +391,10 @@ TypeNode* createTypeNode(Type* type, char* name, int lineno, TypeNode* next) {
 }
 
 /* 新建函数 */
-Function* createFunction(char* name, bool isDefined, Type* returnType, TypeNode* paramNode) {
+Function* createFunction(char* name, int lineno, bool isDefined, Type* returnType, TypeNode* paramNode) {
   Function* func = (Function*)malloc(sizeof(Function));
   func->name = name;
+  func->lineno = lineno;
   func->isDefined = isDefined;
   func->returnType = returnType;
   func->paramNode = paramNode;
@@ -519,7 +532,7 @@ void printTypeNode(TypeNode* typeNode, bool toNewLine) {
 
 /* DEBUG: 打印函数 */
 void printFunction(Function* func, bool toNewLine) {
-  printf("Function(\"%s\", return: ", func->name);
+  printf("Function(\"%s\"(%d), return: ", func->name, func->lineno);
   printType(func->returnType, false);
   printf(", params: ");
   printTypeNode(func->paramNode, false);
@@ -540,7 +553,7 @@ void printSymList(int symListLen, SymElem* symList, bool toNewLine) {
 char* fieldTypeStr[4] = {"Global", "Func", "Cond/Loop", "Anony"};
 /* DEBUG: 打印一个作用域 */
 void printFieldNode(FieldNode* field) {
-  printf("Field{%s, SymList: ", fieldTypeStr[field->type]);
+  printf("Field {%s, SymList: ", fieldTypeStr[field->type]);
   printSymList(field->varListLen, field->varSymList, false);
   if (field->type == F_FUNCTION) {
     printf(", ");

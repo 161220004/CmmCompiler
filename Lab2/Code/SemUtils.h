@@ -38,7 +38,7 @@ Type* createBasicType(Kind kind);
 Type* createArrayType(int length, Type* eleType);
 Type* createStructType(char* name, TypeNode* typeNode);
 TypeNode* createTypeNode(Type* type, char* name, int lineno, TypeNode* next);
-Function* createFunction(char* name, bool isDefined, Type* returnType, TypeNode* paramNode);
+Function* createFunction(char* name, int lineno, bool isDefined, Type* returnType, TypeNode* paramNode);
 FieldNode* createChildField(FieldType type, int varListLen, Function* func);
 char* getArgsString(TypeNode* paramNode, char* funcName);
 char* getExpString(Node* expNode);

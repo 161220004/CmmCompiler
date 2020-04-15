@@ -72,6 +72,20 @@ void handleProgram() {
   currentField = globalField; // 当前处于全局作用域
   // 开始逐层分析
   handleExtDefList(extDefListNode);
+  // 最后检查有没有只声明没定义的函数
+  for (int i = 0; i < funcSymListLen; i++) {
+    if (!funcSymList[i].isNull && !funcSymList[i].func->isDefined) { // 非空且未定义，报错18
+      reportError(18, funcSymList[i].func->lineno, funcSymList[i].func->name, NULL);
+    }
+  }
+  if (yyget_debug()) {
+    printf("Global Field: \n  ");
+    printFieldNode(globalField);
+    printf("Function Symbol List: \n  ");
+    printSymList(funcSymListLen, funcSymList, true);
+    printf("Struct Symbol List: \n  ");
+    printSymList(structSymListLen, structSymList, true);
+  }
 }
 
 /* ExtDefList: 检查一系列全局变量、结构体或函数的定义 */
@@ -118,7 +132,10 @@ void handleExtDef(Node* extDefNode) {
           reportError(19, funcNode->lineno, idNode->cval, NULL);
         }
       }
-      if(yyget_debug()) printFunction(decFunc, true);
+      if(yyget_debug()) {
+        printf("Declare Function: \n  ");
+        printFunction(decFunc, true);
+      }
     } else { // if (childrenMatch(extDefNode, 3, NTN_COMPST)) { // 函数定义
       Function* defFunc = handleFunDec(funcNode, returnType, true);
       if (index < 0) { // 首次出现，添加到函数符号表
@@ -137,13 +154,20 @@ void handleExtDef(Node* extDefNode) {
           preDefFunc->isDefined = true; // 无论是否一致，都视为已定义
         }
       }
+      if(yyget_debug()) {
+        printf("Define Function: \n  ");
+        printFunction(defFunc, true);
+      }
       // 创建函数作用域（重复定义的按本次定义的算），进入作用域处理完退回到当前作用域
       Node* compStNode = getCertainChild(extDefNode, 3);
       FieldNode* funcField = createChildField(F_FUNCTION, getRoughLocVarNum(getCertainChild(compStNode, 2)), defFunc);
       currentField = funcField; // 当前作用域置为函数作用域
       handleCompSt(compStNode); // 开始进入函数作用域内部进行分析
       currentField = currentField->parent; // 解决完函数内部后重置作用域到外部
-      if(yyget_debug()) printFunction(defFunc, true);
+      if (yyget_debug()) {
+        printf("Function Field: \n  ");
+        printFieldNode(funcField);
+      }
     }
   }
 }
@@ -257,9 +281,9 @@ Function* handleFunDec(Node* funDecNode, Type* returnType, bool isDefined) {
       }
       paramNode1 = paramNode1->next;
     }
-    return createFunction(idNode->cval, isDefined, returnType, paramNode);
+    return createFunction(idNode->cval, idNode->lineno, isDefined, returnType, paramNode);
   } else { // 无参数
-    return createFunction(idNode->cval, isDefined, returnType, NULL);
+    return createFunction(idNode->cval, idNode->lineno, isDefined, returnType, NULL);
   }
 }
 
@@ -320,6 +344,10 @@ void handleStmt(Node* stmtNode, FieldType extField) {
     currentField = field; // 当前作用域置为新建的作用域
     handleCompSt(compStNode); // 开始进入新建的作用域内部进行分析
     currentField = currentField->parent; // 解决完新建的作用域内部后重置作用域到外部
+    if (yyget_debug()) {
+      printf("Child Field: \n  ");
+      printFieldNode(field);
+    }
   } else if (childrenMatch(stmtNode, 1, TN_RETURN)) { // RETURN语句
     Node* expNode = getCertainChild(stmtNode, 2);
     Type* returnType = handleExp(expNode);
