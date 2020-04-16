@@ -359,10 +359,10 @@ Type* createArrayType(int length, Type* eleType) {
 }
 
 /* 新建空的结构体类型 */
-Type* createStructType(char* name) {
+Type* createStructType(char* name, TypeNode* structNode) {
   Type* structType = (Type*)malloc(sizeof(Type));
   structType->kind = T_STRUCT;
-  structType->structure.node = NULL;
+  structType->structure.node = structNode;
   structType->structure.name = name;
   return structType;
 }

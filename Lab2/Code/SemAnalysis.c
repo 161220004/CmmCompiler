@@ -208,8 +208,10 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
     } else { // if (childrenMatch(optTagNode, 1, TN_ID)) { // 获取ID作为结构体名
       structName = getStrncpy(getCertainChild(optTagNode, 1)->cval);
     }
+    // 获取域链表
+    TypeNode* structNode = handleDefList(getCertainChild(structSpecNode, 4), NULL, true);
     // 创建结构体类型（域暂时为空）
-    Type* structType = createStructType(structName);
+    Type* structType = createStructType(structName, structNode);
     // 添加结构体名到结构体符号表数组
     if (findInSymList(structName, 0, structSymListLen, structSymList) < 0 &&
         findTypeInAllVarList(structName, currentField) == NULL) { // 第一次出现，且不与变量名重复
@@ -217,9 +219,6 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
     } else { // 发现重名，报错16
       reportError(16, optTagNode->lineno, structName, NULL);
     }
-    // 获取域链表
-    TypeNode* structNode = handleDefList(getCertainChild(structSpecNode, 4), NULL, true);
-    structType->structure.node = structNode;
     // 查找域链表是否存在重名（重名不必删除）
     while (structNode != NULL) {
       TypeNode* dupStructField = findInTypeNode(structNode->name, structNode->next);
