@@ -272,16 +272,12 @@ Function* handleFunDec(Node* funDecNode, Type* returnType, bool isDefined) {
   if (childrenMatch(funDecNode, 3, NTN_VARLIST)) { // 有参数
     TypeNode* paramNode = handleVarList(getCertainChild(funDecNode, 3), NULL);
     // 检查参数名是否重名（重名不必删除）
-    TypeNode* paramNode1 = paramNode;
-    while (paramNode1 != NULL) {
-      TypeNode* paramNode2 = paramNode1->next;
-      while (paramNode2 != NULL) {
-        if (strcmp(paramNode1->name, paramNode2->name) == 0) { // 重名报错3
-          reportError(3, paramNode1->lineno, paramNode1->name, NULL);
-        }
-        paramNode2 = paramNode2->next;
+    TypeNode* paramNodeTmp = paramNode;
+    while (paramNodeTmp != NULL) {
+      if (findInTypeNode(paramNodeTmp->name, paramNodeTmp->next) != NULL) { // 重名报错3
+        reportError(3, paramNodeTmp->lineno, paramNodeTmp->name, NULL);
       }
-      paramNode1 = paramNode1->next;
+      paramNodeTmp = paramNodeTmp->next;
     }
     return createFunction(idNode->cval, idNode->lineno, isDefined, returnType, paramNode);
   } else { // 无参数
