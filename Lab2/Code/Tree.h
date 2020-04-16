@@ -58,6 +58,7 @@ bool isLab(int n);
 
 /** 判定出现语法/词法错误 */
 void setError();
+bool isError();
 
 extern int yyget_debug(void);
 

@@ -134,3 +134,7 @@ bool isLab(int n) {
 void setError() {
   errorflag = 1;
 }
+
+bool isError() {
+  return (errorflag > 0);
+}

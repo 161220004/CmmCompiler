@@ -51,7 +51,7 @@
 
 /* 语义分析 */
 void semanticAnalysis() {
-  if (isLab(2)) {
+  if (isLab(2) && !isError()) {
     handleProgram();
   }
 }
@@ -81,9 +81,9 @@ void handleProgram() {
   if (yyget_debug()) {
     printf("Global Field: \n  ");
     printFieldNode(globalField);
-    printf("Function Symbol List: \n  ");
+    printf("Function Symbol List (len = %d): \n  ", funcSymListLen);
     printSymList(funcSymListLen, funcSymList, true);
-    printf("Struct Symbol List: \n  ");
+    printf("Struct Symbol List (len = %d): \n  ", structSymListLen);
     printSymList(structSymListLen, structSymList, true);
   }
 }
@@ -105,7 +105,8 @@ void handleExtDef(Node* extDefNode) {
     // 添加到全局变量符号表，若有重复的则报错
     TypeNode* varTypeNode = varTypeNodeList;
     while (varTypeNode != NULL) {
-      if (findInVarList(varTypeNode->name, 0, globalField->varListLen, globalField->varSymList) < 0) { // 无重复
+      if (findInSymList(varTypeNode->name, 0, globalField->varListLen, globalField->varSymList) < 0 &&
+          findInSymList(varTypeNode->name, 0, structSymListLen, structSymList) < 0) { // 无重复
         addToVarList(varTypeNode, globalField->varSymList, globalField->varListLen);
       } else { // 发现重复，报错3
         reportError(3, varTypeNode->lineno, varTypeNode->name, NULL);
@@ -121,7 +122,7 @@ void handleExtDef(Node* extDefNode) {
     Node* funcNode = getCertainChild(extDefNode, 2);
     Node* idNode = getCertainChild(funcNode, 1);
     // 查询此函数名是否已经记录
-    int index = findInSymList(idNode->cval, 0, funcSymListLen, true);
+    int index = findInSymList(idNode->cval, 0, funcSymListLen, funcSymList);
     if (childrenMatch(extDefNode, 3, TN_SEMI)) { // 函数声明
       Function* decFunc = handleFunDec(funcNode, returnType, false);
       if (index < 0) { // 首次出现，添加到函数符号表
@@ -210,12 +211,10 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
     // 创建结构体类型（域暂时为空）
     Type* structType = createStructType(structName);
     // 添加结构体名到结构体符号表数组
-    if (findInSymList(structName, 0, structSymListLen, false) < 0) { // 第一次出现
+    if (findInSymList(structName, 0, structSymListLen, structSymList) < 0 &&
+        findTypeInAllVarList(structName, currentField) == NULL) { // 第一次出现，且不与变量名重复
       addToStructList(structType);
     } else { // 发现重名，报错16
-      reportError(16, optTagNode->lineno, structName, NULL);
-    }
-    if (findTypeInAllVarList(structName, currentField) != NULL) { // 检查与变量重名，报错16
       reportError(16, optTagNode->lineno, structName, NULL);
     }
     // 获取域链表
@@ -237,12 +236,12 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
   } else { // if (childrenMatch(structSpecNode, 2, NTN_TAG)) { // 结构体仅声明（无内容定义）
     Node* idNode = getCertainChild(getCertainChild(structSpecNode, 2), 1);
     // 检查此结构体是否已经定义过
-    int index = findInSymList(idNode->cval, 0, structSymListLen, false);
+    int index = findInSymList(idNode->cval, 0, structSymListLen, structSymList);
     if (index < 0) { // 出现未定义结构体
       if (!isSemi) { // 若不是特殊情况如“struct A;”，即定义变量，报错17
         reportError(17, idNode->lineno, idNode->cval, NULL);
       }
-      return createStructType(idNode->cval); // 作为一个“空”结构体返回以便程序继续运行
+      return createUndefinedType(false); // 作为一个Undefined类型返回以便程序继续运行
     } else { // 已经定义过
       return structSymList[index].type;
     }
@@ -317,8 +316,8 @@ void handleCompSt(Node* compStNode) {
   TypeNode* defTypeNode = handleDefList(getCertainChild(compStNode, 2), NULL, false);
   // 一个一个判断是否重复定义后加入当前作用域的变量符号表
   while (defTypeNode != NULL) {
-    if (findInVarList(defTypeNode->name, 0, currentField->varListLen, currentField->varSymList) < 0) {
-      // 本作用域内首次定义，则加入符号表
+    if (findInSymList(defTypeNode->name, 0, currentField->varListLen, currentField->varSymList) < 0 &&
+        findInSymList(defTypeNode->name, 0, structSymListLen, structSymList) < 0) { // 本作用域内首次定义，且不与结构体名重名，则加入符号表
       addToVarList(defTypeNode, currentField->varSymList, currentField->varListLen);
     } else { // 重复定义，不加入符号表，报错3
       reportError(3, defTypeNode->lineno, defTypeNode->name, NULL);
@@ -438,7 +437,7 @@ Type* handleExp(Node* expNode) {
         return typeShallowCopy(idType); // 返回最近定义域内定义的类型
       }
     } else { // 函数调用
-      int index = findInSymList(idNode->cval, 0, funcSymListLen, true);
+      int index = findInSymList(idNode->cval, 0, funcSymListLen, funcSymList);
       if (index < 0) { // 发现未定义函数
         if (idType == NULL) { // 不是变量，报错2
           reportError(2, idNode->lineno, idNode->cval, NULL);

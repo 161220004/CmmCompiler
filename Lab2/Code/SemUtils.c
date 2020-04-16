@@ -280,7 +280,11 @@ void addToVarList(TypeNode* addVar, SymElem* varList, int varListLen) {
   }
   if (yyget_debug()) {
     printf("addToVarList: ");
-    printSymList(varListLen, varList, true);
+    printf("[\"%s\"(%d): ", addVar->name, addVar->lineno);
+    printType(addVar->type, false);
+    printf("] -> ");
+    if (varListLen > 1) printSymList(varListLen, varList + 1, true);
+    else printf("NULL\n");
   }
 }
 
@@ -293,44 +297,25 @@ TypeNode* findInTypeNode(char* name, TypeNode* typeNode) {
   return NULL;
 }
 
-/* 从有序函数/结构体符号表中查询，返回下标；没有则返回-1 */
-int findInSymList(char* name, int start, int end, bool isFunc) { // end是最后一个下标+1
+/* 从有序函数/结构体符号表/当前变量符号表中查询，返回下标；没有则返回-1 */
+int findInSymList(char* name, int start, int end, SymElem* symList) { // end是最后一个下标+1
   if (start >= end) return -1;
+  if (symList == NULL) return -1;
   int mid = (start + end) / 2;
-  int result;
-  if (isFunc) { // 从有序函数符号表中查询
-    result = (funcSymList[mid].isNull) ? (-1) : strcmp(name, funcSymList[mid].name);
-  } else { // 从结构体符号表中查询
-    result = (structSymList[mid].isNull) ? (-1) : strcmp(name, structSymList[mid].name);
-  }
+  int result = (symList[mid].isNull) ? (-1) : strcmp(name, symList[mid].name);
   if (result == 0) {
     return mid;
   } else if (result < 0) { // 查询的值小于mid值
-    return findInSymList(name, start, mid, isFunc);
+    return findInSymList(name, start, mid, symList);
   } else { // 查询的值大于mid值
-    return findInSymList(name, mid + 1, end, isFunc);
-  }
-}
-
-/* 从当前变量符号表中查询，返回下标；没有则返回-1 */
-int findInVarList(char* name, int start, int end, SymElem* varList) {
-  if (start >= end) return -1;
-  if (varList == NULL) return -1;
-  int mid = (start + end) / 2;
-  int result = (varList[mid].isNull) ? (-1) : strcmp(name, varList[mid].name);
-  if (result == 0) {
-    return mid;
-  } else if (result < 0) { // 查询的值小于mid值
-    return findInVarList(name, start, mid, varList);
-  } else { // 查询的值大于mid值
-    return findInVarList(name, mid + 1, end, varList);
+    return findInSymList(name, mid + 1, end, symList);
   }
 }
 
 /* 从当前以及其全部父作用域中查询，若有返回最近那个的类型，没有则返回NULL */
 Type* findTypeInAllVarList(char* name, FieldNode* field) {
   while (field != NULL) {
-    int index = findInVarList(name, 0, field->varListLen, field->varSymList);
+    int index = findInSymList(name, 0, field->varListLen, field->varSymList);
     if (index < 0) { // 当前没找到
       field = field->parent;
     } else { // 找到了
@@ -570,7 +555,7 @@ void printSymList(int symListLen, SymElem* symList, bool toNewLine) {
 char* fieldTypeStr[4] = {"Global", "Func", "Cond/Loop", "Anony"};
 /* DEBUG: 打印一个作用域 */
 void printFieldNode(FieldNode* field) {
-  printf("Field %s {SymList: ", fieldTypeStr[field->type]);
+  printf("Field %s {SymList(len = %d): ", fieldTypeStr[field->type], field->varListLen);
   printSymList(field->varListLen, field->varSymList, false);
   if (field->type == F_FUNCTION) {
     printf(", ");
