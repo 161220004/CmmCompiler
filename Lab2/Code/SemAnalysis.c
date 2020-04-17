@@ -68,7 +68,7 @@ void handleProgram() {
   structSymList = (SymElem*)malloc(structSymListLen * sizeof(SymElem));
   for (int i = 0; i < structSymListLen; i++) { structSymList[i].isNull = true; }
   // 创建全局作用域
-  globalField = createChildField(F_GLOBAL, getRoughGloVarNum(extDefListNode), NULL);
+  FieldNode* globalField = createChildField(F_GLOBAL, getRoughGloVarNum(extDefListNode), NULL);
   currentField = globalField; // 当前处于全局作用域
   // 开始逐层分析
   handleExtDefList(extDefListNode);
@@ -100,19 +100,8 @@ void handleExtDefList(Node* extDefListNode) {
 void handleExtDef(Node* extDefNode) {
   if (childrenMatch(extDefNode, 2, NTN_EXTDECLIST)) { // 任意类型全局变量(包括结构体变量)声明
     Type* specType = handleSpecifier(getCertainChild(extDefNode, 1), false); // 获取该全局变量的类型
-    // 获取定义的全部变量
-    TypeNode* varTypeNodeList = handleExtDecList(getCertainChild(extDefNode, 2), NULL, specType);
-    // 添加到全局变量符号表，若有重复的则报错
-    TypeNode* varTypeNode = varTypeNodeList;
-    while (varTypeNode != NULL) {
-      if (findInSymList(varTypeNode->name, 0, globalField->varListLen, globalField->varSymList) < 0 &&
-          findInSymList(varTypeNode->name, 0, structSymListLen, structSymList) < 0) { // 无重复
-        addToVarList(varTypeNode, globalField->varSymList, globalField->varListLen);
-      } else { // 发现重复，报错3
-        reportError(3, varTypeNode->lineno, varTypeNode->name, NULL);
-      }
-      varTypeNode = varTypeNode->next;
-    }
+    // 把定义的全部变量加入全局符号表
+    handleExtDecList(getCertainChild(extDefNode, 2), specType);
   } else if (childrenMatch(extDefNode, 2, TN_SEMI)) { // 结构体定义
     // 处理结构体定义（非变量）
     handleSpecifier(getCertainChild(extDefNode, 1), true);
@@ -173,23 +162,20 @@ void handleExtDef(Node* extDefNode) {
   }
 }
 
-/* ExtDecList: 检查零个或多个对一个全局变量的定义VarDec；返回定义后的链表 */
-TypeNode* handleExtDecList(Node* extDecListNode, TypeNode* inhTypeNode, Type* inhType) {
+/* ExtDecList: 检查零个或多个对一个全局变量的定义VarDec，并添加到全局变量符号表 */
+void handleExtDecList(Node* extDecListNode, Type* inhType) {
   Node* varDecNode = getCertainChild(extDecListNode, 1);
   Type* varDecType = handleVarDec(varDecNode, inhType);
   TypeNode* varTypeNode = createTypeNode(varDecType, getVarDecName(varDecNode), varDecNode->lineno, NULL);
-  // 添加到inhTypeNode的末尾
-  if (inhTypeNode == NULL) {
-    inhTypeNode = varTypeNode;
-  } else {
-    TypeNode* tmpTypeNode = inhTypeNode;
-    while (tmpTypeNode->next != NULL) { tmpTypeNode = tmpTypeNode->next; }
-    tmpTypeNode->next = varTypeNode;
+  // 添加到全局变量符号表，若有重复的则报错
+  if (findInSymList(varTypeNode->name, 0, currentField->varListLen, currentField->varSymList) < 0 &&
+  findInSymList(varTypeNode->name, 0, structSymListLen, structSymList) < 0) { // 无重复
+    addToVarList(varTypeNode, currentField->varSymList, currentField->varListLen);
+  } else { // 发现重复，报错3
+    reportError(3, varTypeNode->lineno, varTypeNode->name, NULL);
   }
-  if (varDecNode->nextSibling == NULL) { // 最后一个VarDec
-    return inhTypeNode;
-  } else { // 后面还有VarDec
-    return handleExtDecList(getCertainChild(extDecListNode, 3), inhTypeNode, inhType);
+  if (varDecNode->nextSibling != NULL) { // 后面还有VarDec
+    handleExtDecList(getCertainChild(extDecListNode, 3), inhType);
   }
 }
 
@@ -316,17 +302,7 @@ TypeNode* handleParamDec(Node* paramDecNode) {
 /* CompSt: 检查一个由一对花括号括起来的语句块，其中全部局部变量的定义必须在全部语句之前 */
 void handleCompSt(Node* compStNode) {
   // 处理定义部分，获取全部变量声明
-  TypeNode* defTypeNode = handleDefList(getCertainChild(compStNode, 2), NULL, false);
-  // 一个一个判断是否重复定义后加入当前作用域的变量符号表
-  while (defTypeNode != NULL) {
-    if (findInSymList(defTypeNode->name, 0, currentField->varListLen, currentField->varSymList) < 0 &&
-        findInSymList(defTypeNode->name, 0, structSymListLen, structSymList) < 0) { // 本作用域内首次定义，且不与结构体名重名，则加入符号表
-      addToVarList(defTypeNode, currentField->varSymList, currentField->varListLen);
-    } else { // 重复定义，不加入符号表，报错3
-      reportError(3, defTypeNode->lineno, defTypeNode->name, NULL);
-    }
-    defTypeNode = defTypeNode->next;
-  }
+  handleDefList(getCertainChild(compStNode, 2), NULL, false);
   // 处理语句
   handleStmtList(getCertainChild(compStNode, 3));
 }
@@ -405,6 +381,15 @@ TypeNode* handleDecList(Node* decListNode, TypeNode* inhTypeNode, Type* inhType,
     while (tmpTypeNode->next != NULL) { tmpTypeNode = tmpTypeNode->next; }
     tmpTypeNode->next = decTypeNode;
   }
+  // 如果是局部变量，判断是否重复定义后立刻写入当前作用域的符号表
+  if (!inStruct) {
+    if (findInSymList(decTypeNode->name, 0, currentField->varListLen, currentField->varSymList) < 0 &&
+        findInSymList(decTypeNode->name, 0, structSymListLen, structSymList) < 0) { // 本作用域内首次定义，且不与结构体名重名，则加入符号表
+      addToVarList(decTypeNode, currentField->varSymList, currentField->varListLen);
+    } else { // 重复定义，不加入符号表，报错3
+      reportError(3, decTypeNode->lineno, decTypeNode->name, NULL);
+    }
+  }
   if (decNode->nextSibling == NULL) { // 最后一个Dec
     return inhTypeNode;
   } else { // 后面还有Dec
@@ -423,7 +408,7 @@ TypeNode* handleDec(Node* decNode, Type* inhType, bool inStruct) {
       reportError(15, varDecNode->lineno, varTypeNode->name, NULL);
     } else { // 检查初始化是否符合要求
       Type* expType = handleExp(getCertainChild(decNode, 3));
-      if (!typeEquals(varDecType, expType)) { // 初始化类型不一致，报错5
+      if (expType->kind != T_UNDEFINED && !typeEquals(varDecType, expType)) { // 忽略遗留错误，初始化类型不一致，报错5
         reportError(5, varDecNode->lineno, NULL, NULL);
       }
     }

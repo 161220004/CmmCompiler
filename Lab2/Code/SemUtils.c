@@ -6,8 +6,6 @@ int funcSymListLen = 0;
 /* 结构体符号表（有序数组） */
 SymElem* structSymList = NULL;
 int structSymListLen = 0;
-/* 全局作用域 */
-FieldNode* globalField = NULL;
 /* 当前所在的作用域 */
 FieldNode* currentField = NULL;
 
@@ -217,7 +215,7 @@ void addToFuncList(Function* func) {
     }
   }
   if (yyget_debug()) {
-    printf("addToFuncList: ");
+    printf("addToFuncList: [\"%s\"]\n  ", func->name);
     printSymList(funcSymListLen, funcSymList, true);
   }
 }
@@ -248,7 +246,7 @@ void addToStructList(Type* type) {
     }
   }
   if (yyget_debug()) {
-    printf("addToStructList: ");
+    printf("addToStructList: [\"%s\"]\n  ", type->structure.name);
     printSymList(structSymListLen, structSymList, true);
   }
 }

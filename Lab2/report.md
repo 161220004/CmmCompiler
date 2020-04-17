@@ -88,8 +88,7 @@
      a = 1; b = 5; // 全局的a和b
      c = func(2, 2.5); // True
      if (c) {
-       float c = 2.5; // 局部的c
-       float d = c * 1.5; // 局部的c和d
+       float c = 2.5, d = c * 1.5; // 局部的c和d
      } else {
        int d = c + 3; // main的c，局部的d
        { // 匿名作用域

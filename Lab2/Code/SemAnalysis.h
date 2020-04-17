@@ -70,7 +70,7 @@ void semanticAnalysis();
 void handleProgram();
 void handleExtDefList(Node* extDefListNode);
 void handleExtDef(Node* extDefNode);
-TypeNode* handleExtDecList(Node* extDecListNode, TypeNode* inhTypeNode, Type* inhType);
+void handleExtDecList(Node* extDecListNode, Type* inhType);
 Type* handleSpecifier(Node* specNode, bool isSemi);
 Type* handleStructSpecifier(Node* structSpecNode, bool isSemi);
 Type* handleVarDec(Node* varDecNode, Type* inhType);
