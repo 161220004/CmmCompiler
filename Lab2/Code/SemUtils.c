@@ -279,12 +279,10 @@ void addToVarList(TypeNode* addVar, SymElem* varList, int varListLen) {
     }
   }
   if (yyget_debug()) {
-    printf("addToVarList: ");
-    printf("[\"%s\"(%d): ", addVar->name, addVar->lineno);
+    printf("addToVarList: [\"%s\"(%d): ", addVar->name, addVar->lineno);
     printType(addVar->type, false);
-    printf("] -> ");
-    if (varListLen > 1) printSymList(varListLen, varList + 1, true);
-    else printf("NULL\n");
+    printf("]\n  ");
+    printSymList(varListLen, varList, true);
   }
 }
 

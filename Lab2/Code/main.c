@@ -13,7 +13,7 @@ int main(int argc, char** argv)
 {
   if (argc <= 1) return 1;
   // 是否DEBUG环境
-  // yyset_debug(1);
+  yyset_debug(1);
   // 第几次实验
   setLabFlag(2);
   // 默认只分析一个文件

@@ -5,17 +5,110 @@
 #### 一、数据结构
 
 - 类型 Type
+
+  ```c
+  struct Type {
+    Kind kind; // 类型，int/float/array/struct/undefined
+    union {
+      bool isRight; // int/float/undefined专用，是否是右值
+      struct { Type* eleType; int length; } array; // array专用，元素类型和元素个数
+      struct { TypeNode* node; char* name; } structure; // struct专用，域的链表和结构体名
+    };
+  };
+  ```
+
 - 函数 Function
+
+  ```c
+  struct Function {
+    char* name; // 函数名
+    int lineno; // 所在行数（函数名位置）
+    bool isDefined; // 是否定义（一旦存在，默认已经声明）
+    Type* returnType; // 返回类型
+    TypeNode* paramNode; // 参数链表
+  };
+  ```
+
 - 临时变量 TypeNode（局部/全局变量，或结构体的一个域，或函数的一个参数）
+
+  ```c
+  struct TypeNode {
+    Type* type; // 域/参数/变量的类型
+    char* name; // 域/参数/变量的id
+    int lineno; // 所在行数
+    TypeNode* next; // 下一个节点
+  };
+  ```
+
 - 作用域 FieldNode
+
+  ```c
+  struct FieldNode {
+    FieldType type; // 作用域种类，包括GLOBAL, FUNCTION, COND_LOOP(条件/循环), F_ANONY(匿名)
+    FieldNode* parent; // 其外部作用域（一个）
+    Function* func; // 对于函数作用域，记录函数信息（一个）
+    int varListLen; // 本作用域内的变量符号表长度
+    SymElem* varSymList; // 本作用域内的变量符号表（已按id排序的有序数组，便于二分查找）
+  };
+  ```
+
 - 符号表数组元素 SymElem（变量/函数/结构体符号表）
+
+  ```c
+  struct SymElem {
+    bool isNull; // 是否为空
+    char* name; // 变量名/函数名/结构体名
+    union {
+      Type* type; // 对于变量类型或结构体结构，其类型信息
+      Function* func; // 对于函数，其函数信息
+    };
+  };
+  ```
 
 #### 二、亮点
 
 1. Field Tree —— 作用域的灵活处理
+
+   作用域的种类包括全局作用域（仅一个）、函数作用域（ExtDef -> Specifier FunDec **CompSt**）、条件/循环作用域（Stmt -> IF LP Exp RP **CompSt** ELSE **CompSt** | WHILE LP Exp RP **CompSt**），匿名作用域（Stmt -> **CompSt**），每个作用域维护自己的变量符号表（CompSt -> LC **DefList** StmtList RC 中的 **DefList**）。
+
+   开始语义分析时就创建一个全局作用域的FieldNode，并把当前作用域的指针 `FieldNode* currentField` 指向全局作用域，分析时，当遇到新的局部作用域（如函数的CompSt，if/while的ComptSt），则新建一个当前作用域的子作用域，将currentField置为子作用域并分析，在分析完子作用域后再通过FieNode中的parent指针将当前作用域指针currentField置回父作用域。
+
+   每个作用域都有一个按ID排序的变量符号表（数组），查询时可对currentField的变量符号表进行二分查找，若找到了就用，找不到就寻找其父作用域currentField->parent的变量符号表，以此类推直到全局作用域，若都找不到才判定该变量未定义。
+
+   例如，下面一段代码得到的作用域树是这样的：
+
+   ```c
+   int a, b;
+   int func(int arg1, float arg2) { // 函数作用域
+     int a = 3; // 局部的a，不是全局的a
+     return ((arg1 < a) && (arg2 < b));
+   }
+   int main() { // 函数作用域
+     int c; // 局部的c
+     a = 1; b = 5; // 全局的a和b
+     c = func(2, 2.5); // True
+     if (c) {
+       float c = 2.5; // 局部的c
+       float d = c * 1.5; // 局部的c和d
+     } else {
+       int d = c + 3; // main的c，局部的d
+       { // 匿名作用域
+         float d = 0.5; // 局部的d
+         a + b + c; // 全局的a和b，main的c
+       }
+     }
+   }
+   ```
+
+   
+
 2. Undefined —— 避免连环报错的类型推定
+
 3. 层层深入 —— 交付给底层的分析模式
+
 4. 二分查找 —— 加快查询速度
+
+5. 更广泛的右值判定
 
 #### 三、注意事项（一些私设）
 
@@ -23,7 +116,7 @@
 
 - 对于**条件判断**的类型错误（如：`if(1.5)...`、`while(0.5)...`），本人归类为**错误类型7**（详见细节说明）
 
-- 报错出现的**顺序可能不与错误出现的行号顺序相同**（因为struct的域链表等TypeNode链表是反的，且错误类型18永远是最后才判断的）
+- 报错出现的**顺序可能不与错误出现的行号顺序相同**（例如错误类型18永远是最后才判断的）
 
 - 对于**同名结构体的嵌套**是**不允许**的（如：`struct A {int x; struct A next;};`），因为本程序中只有一个结构体完全定义结束后才会加入结构体符号表，对于同名嵌套将报错17
 
@@ -44,6 +137,8 @@
 - 由于Undefined的类型推测，表达式的一些错误不会连续性引发，例如：
 
   a是未定义的变量，则 `int b = (a + 1) * 5` 只会报一个错误类型1，因为(a + 1)作为Undefined将在 `Exp * Exp` 时被推测为int类型，并免除报错类型不匹配
+  
+- 为了避免输出奇怪的问题，当词法/语法分析不通过时（Lab1的错），不会进行Lab2的语义分析
 
 #### 四、细节说明
 
@@ -135,7 +230,7 @@
 
   - 错误类型15： 结构体中域名重复定义（指同一结构体中） ，或在定义时对域进行初始化（例如struct A { int a = 0; }）
 
-    - 域名重复定义：报错，不必删除重复的域节点，查询域时找到的是最后定义的重名节点
+    - 域名重复定义：报错，不必删除重复的域节点，查询域时找到的是第一次定义的重名节点
     - 定义时对域进行初始化：报错后直接忽视后面的初始化部分
 
   - 错误类型16： 结构体的名字与前面定义过的结构体或变量的名字重复
@@ -152,4 +247,7 @@
 
   - 错误类型19： 函数的多次声明互相冲突（即函数名一致，但返回类型、形参数量或者形参类型不一致），或者声明与定义之间互相冲突
 
+    - 多次声明冲突时，报错后不再加入函数符号表，即函数符号表中只保留第一次声明的函数类型
+    - 声明与定义冲突时，报错后定义的类型不再加入函数符号表，即函数符号表中只保留声明的函数类型，但并不影响函数定义内部的语义分析
+    
     

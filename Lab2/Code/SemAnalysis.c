@@ -177,11 +177,19 @@ void handleExtDef(Node* extDefNode) {
 TypeNode* handleExtDecList(Node* extDecListNode, TypeNode* inhTypeNode, Type* inhType) {
   Node* varDecNode = getCertainChild(extDecListNode, 1);
   Type* varDecType = handleVarDec(varDecNode, inhType);
-  TypeNode* varTypeNode = createTypeNode(varDecType, getVarDecName(varDecNode), varDecNode->lineno, inhTypeNode);
+  TypeNode* varTypeNode = createTypeNode(varDecType, getVarDecName(varDecNode), varDecNode->lineno, NULL);
+  // 添加到inhTypeNode的末尾
+  if (inhTypeNode == NULL) {
+    inhTypeNode = varTypeNode;
+  } else {
+    TypeNode* tmpTypeNode = inhTypeNode;
+    while (tmpTypeNode->next != NULL) { tmpTypeNode = tmpTypeNode->next; }
+    tmpTypeNode->next = varTypeNode;
+  }
   if (varDecNode->nextSibling == NULL) { // 最后一个VarDec
-    return varTypeNode;
+    return inhTypeNode;
   } else { // 后面还有VarDec
-    return handleExtDecList(getCertainChild(extDecListNode, 3), varTypeNode, inhType);
+    return handleExtDecList(getCertainChild(extDecListNode, 3), inhTypeNode, inhType);
   }
 }
 
@@ -223,7 +231,7 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
     while (structNode != NULL) {
       TypeNode* dupStructField = findInTypeNode(structNode->name, structNode->next);
       if (dupStructField != NULL) { // 重名报错15
-        reportError(15, structNode->lineno, structNode->name, NULL);
+        reportError(15, dupStructField->lineno, dupStructField->name, NULL);
       }
       structNode = structNode->next;
     }
@@ -362,6 +370,9 @@ void handleStmt(Node* stmtNode, FieldType extField) {
       reportError(7, expNode->lineno, NULL, NULL);
     }
     handleStmt(getCertainChild(stmtNode, 5), F_COND_LOOP);
+    if (childrenMatch(stmtNode, 6, TN_ELSE)) { // IF-ELSE还有个Else语句
+        handleStmt(getCertainChild(stmtNode, 7), F_COND_LOOP);
+    }
   }
 }
 
@@ -369,9 +380,9 @@ void handleStmt(Node* stmtNode, FieldType extField) {
 TypeNode* handleDefList(Node* defListNode, TypeNode* inhTypeNode, bool inStruct) {
   if (defListNode->child == NULL) { // 最后一次为空，直接返回之前的全部
     return inhTypeNode;
-  } else { // if (childrenMatch(defListNode, 1, NTN_DEF)) { // 在继承的那部分中添加Def并传递下去
+  } else { // if (childrenMatch(defListNode, 1, NTN_DEF)) { // 在继承的那部分中添加Def到后面并传递下去
     TypeNode* defTypeNode = handleDef(getCertainChild(defListNode, 1), inStruct);
-    inhTypeNode = linkTypeNodeList(inhTypeNode, defTypeNode);
+    inhTypeNode = linkTypeNodeList(defTypeNode, inhTypeNode);
     return handleDefList(getCertainChild(defListNode, 2), inhTypeNode, inStruct);
   }
 }
@@ -386,11 +397,18 @@ TypeNode* handleDef(Node* defNode, bool inStruct) {
 TypeNode* handleDecList(Node* decListNode, TypeNode* inhTypeNode, Type* inhType, bool inStruct) {
   Node* decNode = getCertainChild(decListNode, 1);
   TypeNode* decTypeNode = handleDec(decNode, inhType, inStruct);
-  decTypeNode->next = inhTypeNode;
+  // 添加到inhTypeNode的末尾
+  if (inhTypeNode == NULL) {
+    inhTypeNode = decTypeNode;
+  } else {
+    TypeNode* tmpTypeNode = inhTypeNode;
+    while (tmpTypeNode->next != NULL) { tmpTypeNode = tmpTypeNode->next; }
+    tmpTypeNode->next = decTypeNode;
+  }
   if (decNode->nextSibling == NULL) { // 最后一个Dec
-    return decTypeNode;
+    return inhTypeNode;
   } else { // 后面还有Dec
-    return handleDecList(getCertainChild(decListNode, 3), decTypeNode, inhType, inStruct);
+    return handleDecList(getCertainChild(decListNode, 3), inhTypeNode, inhType, inStruct);
   }
 }
 
