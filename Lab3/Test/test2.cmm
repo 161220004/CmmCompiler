@@ -1,0 +1,19 @@
+int a, b;
+int func(int arg1, float arg2) { // 函数作用域
+  int a = 3; // 局部的a，不是全局的a
+  return ((arg1 < a) && (arg2 < b));
+}
+int main() { // 函数作用域
+  int c; // 局部的c
+  a = 1; b = 5; // 全局的a和b
+  c = func(2, 2.5); // True
+  if (c) {
+    float c = 2.5, d = c * 1.5; // 局部的c和d
+  } else {
+    int d = c + 3; // main的c，局部的d
+    { // 匿名作用域
+      float d = 0.5; // 局部的d
+      a + b + c; // 全局的a和b，main的c
+    }
+  }
+}
