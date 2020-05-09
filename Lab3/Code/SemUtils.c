@@ -31,31 +31,29 @@ FieldNode* currentField = NULL;
   19) 错误类型19： 函数的多次声明互相冲突（即函数名一致，但返回类型、形参数量或者形参类型不一致），或者声明与定义之间互相冲突
 */
 void reportError(int errno, int lineno, char* val, char* addition) {
-  if (isLab(2)) {
-    switch (errno) {
-      case 1: fprintf(stderr, "Error type 1 at Line %d: Undefined variable \"%s\".", lineno, val); break;
-      case 2: fprintf(stderr, "Error type 2 at Line %d: Undefined function \"%s\".", lineno, val); break;
-      case 3: fprintf(stderr, "Error type 3 at Line %d: Redefined variable \"%s\".", lineno, val); break;
-      case 4: fprintf(stderr, "Error type 4 at Line %d: Redefined function \"%s\".", lineno, val); break;
-      case 5: fprintf(stderr, "Error type 5 at Line %d: Type mismatched for assignment.", lineno); break;
-      case 6: fprintf(stderr, "Error type 6 at Line %d: The left-hand side of an assignment must be a variable.", lineno); break;
-      case 7: fprintf(stderr, "Error type 7 at Line %d: Type mismatched for operands.", lineno); break;
-      case 8: fprintf(stderr, "Error type 8 at Line %d: Type mismatched for return.", lineno); break;
-      case 9: fprintf(stderr, "Error type 9 at Line %d: Function \"%s\" is not applicable for arguments \"%s\".", lineno, val, addition); break;
-      case 10: fprintf(stderr, "Error type 10 at Line %d: \"%s\" is not an array.", lineno, val); break;
-      case 11: fprintf(stderr, "Error type 11 at Line %d: \"%s\" is not a function.", lineno, val); break;
-      case 12: fprintf(stderr, "Error type 12 at Line %d: \"%s\" is not an integer.", lineno, val); break;
-      case 13: fprintf(stderr, "Error type 13 at Line %d: Illegal use of \".\".", lineno); break;
-      case 14: fprintf(stderr, "Error type 14 at Line %d: Non-existent field \"%s\".", lineno, val); break;
-      case 15: fprintf(stderr, "Error type 15 at Line %d: Redefined field \"%s\".", lineno, val); break;
-      case 16: fprintf(stderr, "Error type 16 at Line %d: Duplicated name \"%s\".", lineno, val); break;
-      case 17: fprintf(stderr, "Error type 17 at Line %d: Undefined structure \"%s\".", lineno, val); break;
-      case 18: fprintf(stderr, "Error type 18 at Line %d: Undefined function \"%s\".", lineno, val); break;
-      case 19: fprintf(stderr, "Error type 19 at Line %d: Inconsistent declaration of function \"%s\".", lineno, val); break;
-      default: fprintf(stderr, "Undefined Error !!!");
-    }
-    fprintf(stderr, "\n");
+  switch (errno) {
+    case 1: fprintf(stderr, "Error type 1 at Line %d: Undefined variable \"%s\".", lineno, val); break;
+    case 2: fprintf(stderr, "Error type 2 at Line %d: Undefined function \"%s\".", lineno, val); break;
+    case 3: fprintf(stderr, "Error type 3 at Line %d: Redefined variable \"%s\".", lineno, val); break;
+    case 4: fprintf(stderr, "Error type 4 at Line %d: Redefined function \"%s\".", lineno, val); break;
+    case 5: fprintf(stderr, "Error type 5 at Line %d: Type mismatched for assignment.", lineno); break;
+    case 6: fprintf(stderr, "Error type 6 at Line %d: The left-hand side of an assignment must be a variable.", lineno); break;
+    case 7: fprintf(stderr, "Error type 7 at Line %d: Type mismatched for operands.", lineno); break;
+    case 8: fprintf(stderr, "Error type 8 at Line %d: Type mismatched for return.", lineno); break;
+    case 9: fprintf(stderr, "Error type 9 at Line %d: Function \"%s\" is not applicable for arguments \"%s\".", lineno, val, addition); break;
+    case 10: fprintf(stderr, "Error type 10 at Line %d: \"%s\" is not an array.", lineno, val); break;
+    case 11: fprintf(stderr, "Error type 11 at Line %d: \"%s\" is not a function.", lineno, val); break;
+    case 12: fprintf(stderr, "Error type 12 at Line %d: \"%s\" is not an integer.", lineno, val); break;
+    case 13: fprintf(stderr, "Error type 13 at Line %d: Illegal use of \".\".", lineno); break;
+    case 14: fprintf(stderr, "Error type 14 at Line %d: Non-existent field \"%s\".", lineno, val); break;
+    case 15: fprintf(stderr, "Error type 15 at Line %d: Redefined field \"%s\".", lineno, val); break;
+    case 16: fprintf(stderr, "Error type 16 at Line %d: Duplicated name \"%s\".", lineno, val); break;
+    case 17: fprintf(stderr, "Error type 17 at Line %d: Undefined structure \"%s\".", lineno, val); break;
+    case 18: fprintf(stderr, "Error type 18 at Line %d: Undefined function \"%s\".", lineno, val); break;
+    case 19: fprintf(stderr, "Error type 19 at Line %d: Inconsistent declaration of function \"%s\".", lineno, val); break;
+    default: fprintf(stderr, "Undefined Error !!!");
   }
+  fprintf(stderr, "\n");
 }
 
 /* 检查一个节点的子节点是否符合要求（只需检查第n个节点（从1开始数）是否是expectName），没有第n个则返回false */
@@ -560,4 +558,14 @@ void printFieldNode(FieldNode* field) {
     printFunction(field->func, false);
   }
   printf("}\n");
+}
+
+/** 用于实验三，预添加两个函数 int read() 和 int write(int) */
+void preAddFunctions() {
+  Type* intType = createBasicType(T_INT);
+  Function* readFunc = createFunction("read", 0, true, typeShallowCopy(intType), NULL);
+  TypeNode* intTypeNode = createTypeNode(intType, "n", 0, NULL);
+  Function* writeFunc = createFunction("write", 0, true, typeShallowCopy(intType), intTypeNode);
+  addToFuncList(readFunc);
+  addToFuncList(writeFunc);
 }

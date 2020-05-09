@@ -51,8 +51,10 @@
 
 /* 语义分析 */
 void semanticAnalysis() {
-  if (isLab(2) && !isError()) {
-    handleProgram();
+  if (!isError()) {
+    if (isLab(2) || isLab(3)) {
+      handleProgram();
+    }
   }
 }
 
@@ -60,9 +62,12 @@ void semanticAnalysis() {
 void handleProgram() {
   Node* extDefListNode = getCertainChild(root, 1);
   // 创建全局函数表
-  funcSymListLen = getRoughFuncNum(extDefListNode);
+  int preAddFuncNum = 0;
+  if (isLab(3)) preAddFuncNum = 2;
+  funcSymListLen = getRoughFuncNum(extDefListNode) + preAddFuncNum;
   funcSymList = (SymElem*)malloc(funcSymListLen * sizeof(SymElem));
   for (int i = 0; i < funcSymListLen; i++) { funcSymList[i].isNull = true; }
+  if (isLab(3)) preAddFunctions();
   // 创建全局结构体表
   structSymListLen = getRoughStructNum(extDefListNode);
   structSymList = (SymElem*)malloc(structSymListLen * sizeof(SymElem));

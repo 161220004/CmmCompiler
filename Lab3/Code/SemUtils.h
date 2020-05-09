@@ -21,6 +21,7 @@ Node* getCertainChild(Node* node, int n);
 char* itoa(int num);
 Type* typeShallowCopy(Type* type);
 TypeNode* linkTypeNodeList(TypeNode* preList, TypeNode* addList);
+int getCertainNum(Node* node, NodeName certainName);
 int getRoughStructNum(Node* extDefListNode);
 int getRoughFuncNum(Node* extDefListNode);
 int getRoughGloVarNum(Node* extDefListNode);
@@ -50,5 +51,6 @@ void printTypeNode(TypeNode* typeNode, bool toNewLine);
 void printFunction(Function* func, bool toNewLine);
 void printSymList(int symListLen, SymElem* symList, bool toNewLine);
 void printFieldNode(FieldNode* field);
+void preAddFunctions();
 
 #endif

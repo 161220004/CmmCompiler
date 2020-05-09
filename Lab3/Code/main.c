@@ -8,6 +8,7 @@ extern void showDetail();
 extern void setLabFlag(int n);
 extern void printTree();
 extern void semanticAnalysis();
+extern void generateIR(char* fileName);
 
 int main(int argc, char** argv)
 {
@@ -26,5 +27,10 @@ int main(int argc, char** argv)
   yyparse();
   printTree();
   semanticAnalysis();
+  if (argc > 2) {
+    generateIR(argv[2]);
+  } else {
+    generateIR(NULL);
+  }
   return 0;
 }
