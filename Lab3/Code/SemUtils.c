@@ -31,6 +31,7 @@ FieldNode* currentField = NULL;
   19) 错误类型19： 函数的多次声明互相冲突（即函数名一致，但返回类型、形参数量或者形参类型不一致），或者声明与定义之间互相冲突
 */
 void reportError(int errno, int lineno, char* val, char* addition) {
+  if (isLab(3)) setError();
   switch (errno) {
     case 1: fprintf(stderr, "Error type 1 at Line %d: Undefined variable \"%s\".", lineno, val); break;
     case 2: fprintf(stderr, "Error type 2 at Line %d: Undefined function \"%s\".", lineno, val); break;
@@ -87,8 +88,9 @@ Node* getCertainChild(Node* node, int n) {
   return NULL;
 }
 
-/* 将一个int(>=1)转换为string */
+/* 将一个int(>=0)转换为string */
 char* itoa(int num) {
+  if (num == 0) return "0";
   char tmp[12];
   char* str = (char*)malloc(12 * sizeof(char));
   int n = 0;
@@ -214,7 +216,7 @@ void addToFuncList(Function* func) {
       }
     }
   }
-  if (yyget_debug()) {
+  if (yyget_debug() && isLab(2)) {
     printf("addToFuncList: [\"%s\"]\n  ", func->name);
     printSymList(funcSymListLen, funcSymList, true);
   }
@@ -245,7 +247,7 @@ void addToStructList(Type* type) {
       }
     }
   }
-  if (yyget_debug()) {
+  if (yyget_debug() && isLab(2)) {
     printf("addToStructList: [\"%s\"]\n  ", type->structure.name);
     printSymList(structSymListLen, structSymList, true);
   }
@@ -276,7 +278,7 @@ void addToVarList(TypeNode* addVar, SymElem* varList, int varListLen) {
       }
     }
   }
-  if (yyget_debug()) {
+  if (yyget_debug() && (isLab(2) || isLab(3))) {
     printf("addToVarList: [\"%s\"(%d): ", addVar->name, addVar->lineno);
     printType(addVar->type, false);
     printf("]\n  ");

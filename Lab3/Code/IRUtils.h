@@ -6,8 +6,6 @@
 
 /** 全部中间代码双向链表 */
 extern InterCode* IRList;
-/** 当前分析到的中间代码位置（总是指向最后一个不是NULL的中间代码） */
-extern InterCode* IRTail;
 /** 变量个数（需要初始化以计算符号表长度） */
 extern int interVarNum;
 /** 中间代码变量符号表 */
@@ -19,14 +17,30 @@ extern int tempCount;
 /** Label个数 */
 extern int labelCount;
 
-void printInterCode(char* fileName);
+void printInterCode(FILE* file, InterCode* IRCode, bool toNewLine);
+void printInterCodes(char* fileName);
 void printOperand(Operand* op, FILE* file);
-void addCodeToTail(InterCode* newCode);
-
+InterCode* getInterCodeHead(InterCode* tail);
+InterCode* getInterCodeTail(InterCode* head);
+InterCode* linkInterCodeHeadToHead(InterCode* prevCode, InterCode* nextCode);
+InterCode* linkInterCodeTailToHead(InterCode* prevCode, InterCode* nextCode);
+InterCode* addCodeToTail(InterCode* newCode, InterCode* tail);
+char* getOpName(char* body, int num);
+bool isCondition(Node* expNode);
+bool isRelop(NodeName name);
+Relop getExpRelop(NodeName name);
+Operand* lookUpVar(char* name);
+Operand* lookUpFunc(char* name);
+Operand* newTemp();
+char* newLabel();
 Operand* createOperand(OpKind kind, char* name);
 Operand* createConst(int val);
-InterCode* createInterCodeNull();
 InterCode* createInterCodeName(IRKind kind, char* name);
 InterCode* createInterCodeOne(IRKind kind, Operand* op);
+InterCode* createInterCodeTwo(IRKind kind, Operand* op1, Operand* op2);
+InterCode* createInterCodeThree(IRKind kind, Operand* op1, Operand* op2, Operand* op3);
+InterCode* createInterCodeIf(Operand* op1, Relop relop, Operand* op2, char* label);
+InterCode* createInterCodeCall(IRKind kind, Operand* op, char* funcName);
+int getVarMemory(Type* type);
 
 #endif

@@ -15,7 +15,7 @@ typedef enum {
 typedef enum {
   IR_ASSIGN, IR_ADD, IR_SUB, IR_MUL, IR_DIV,
   IR_LABEL, IR_FUNCTION, IR_RETURN, IR_PARAM, IR_ARG, IR_CALL,
-  IR_READ, IR_WRITE, IR_IF, IR_GOTO, IR_DEC, IR_NULL
+  IR_READ, IR_WRITE, IR_IF, IR_GOTO, IR_DEC
 } IRKind;
 typedef enum { EQ, NE, GE, GT, LE, LT } Relop;
 
@@ -32,8 +32,8 @@ struct InterCode {
   IRKind kind;
 	union {
 		struct { Operand* op; } one; // 包括：RETURN, PARAM, ARG, READ, WRITE
-		struct { Operand* op1; Operand* op2; } two; // 包括：ASSIGN
-		struct { Operand* op1; Operand* op2; Operand* op3; } three; // 包括：ADD, SUB, MUL, DIV, DEC
+		struct { Operand* op1; Operand* op2; } two; // 包括：ASSIGN, DEC
+		struct { Operand* op1; Operand* op2; Operand* op3; } three; // 包括：ADD, SUB, MUL, DIV
 		struct { Operand* op; char* funcName; } call; // 包括：CALL
 		struct { Operand* op1; Relop relop; Operand* op2; char* label; } ifcode; // 包括：IF
 		char* name; // 包括：LABEL, FUNCTION, GOTO
@@ -44,12 +44,21 @@ struct InterCode {
 
 void generateIR(char* fileName);
 void translateProgram();
-void translateExtDefList(Node* extDefListNode);
-void translateExtDef(Node* extDefNode);
-void translateFunDec(Node* funDecNode);
-void translateVarList(Node* varListNode);
-void translateParamDec(Node* paramDecNode);
+InterCode* translateExtDefList(Node* extDefListNode, InterCode* tail);
+InterCode* translateExtDef(Node* extDefNode);
+InterCode* translateFunDec(Node* funDecNode);
+InterCode* translateVarList(Node* varListNode, InterCode* tail);
+InterCode* translateParamDec(Node* paramDecNode);
 Operand* translateVarDec(Node* varDecNode);
-void translateCompSt(Node* compStNode);
+InterCode* translateCompSt(Node* compStNode);
+InterCode* translateDefList(Node* defListNode, InterCode* tail);
+InterCode* translateDef(Node* defNode);
+InterCode* translateDecList(Node* decListNode, Type* defType, InterCode* tail);
+InterCode* translateDec(Node* decNode, Type* defType);
+InterCode* translateStmtList(Node* stmtListNode, InterCode* tail);
+InterCode* translateStmt(Node* stmtNode);
+InterCode* translateCond(Node* expNode, InterCode* trueLab, InterCode* falseLab);
+InterCode* translateExp(Node* expNode, Operand* place);
+InterCode* translateArgs(Node* argsNode, InterCode* tail, InterCode* argsCode);
 
 #endif

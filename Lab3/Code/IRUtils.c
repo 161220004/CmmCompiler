@@ -2,8 +2,6 @@
 
 /** 全部中间代码双向链表 */
 InterCode* IRList = NULL;
-/** 当前分析到的中间代码位置（总是指向最后一个不是NULL的中间代码） */
-InterCode* IRTail = NULL;
 
 /** 变量个数（需要初始化以计算符号表长度） */
 int interVarNum = 0;
@@ -17,8 +15,83 @@ int tempCount = 0;
 /* Label个数 */
 int labelCount = 0;
 
+/** 打印一条中间代码 */
+void printInterCode(FILE* file, InterCode* IRCode, bool toNewLine) {
+  if (IRCode == NULL) {
+    if (yyget_debug()) printf("NULL");
+  } else if (IRCode->kind == IR_ASSIGN) {
+    // 赋值
+    printOperand(IRCode->two.op1, file);
+    fprintf(file, " := ");
+    printOperand(IRCode->two.op2, file);
+  } else if (IRCode->kind == IR_ADD || IRCode->kind == IR_SUB ||
+             IRCode->kind == IR_MUL || IRCode->kind == IR_DIV) {
+    // 加减乘除
+    printOperand(IRCode->three.op1, file);
+    fprintf(file," := ");
+    printOperand(IRCode->three.op2, file);
+    if (IRCode->kind == IR_ADD) fprintf(file, " + ");
+    else if (IRCode->kind == IR_SUB) fprintf(file, " - ");
+    else if (IRCode->kind == IR_MUL) fprintf(file, " * ");
+    else if (IRCode->kind == IR_DIV) fprintf(file, " / ");
+    printOperand(IRCode->three.op3, file);
+  } else if (IRCode->kind == IR_LABEL) {
+    // Label
+    fprintf(file, "LABEL %s :", IRCode->name);
+  } else if (IRCode->kind == IR_FUNCTION) {
+    // Function
+    fprintf(file, "FUNCTION %s :", IRCode->name);
+  } else if (IRCode->kind == IR_RETURN || IRCode->kind == IR_ARG || IRCode->kind == IR_PARAM ||
+             IRCode->kind == IR_READ || IRCode->kind == IR_WRITE ) {
+    // 关键字 + 变量名
+    if (IRCode->kind == IR_RETURN) fprintf(file, "RETURN ");
+    else if (IRCode->kind == IR_ARG) {
+      if (IRCode->one.op == NULL) return;
+      fprintf(file, "ARG ");
+    }
+    else if (IRCode->kind == IR_PARAM) fprintf(file, "PARAM ");
+    else if (IRCode->kind == IR_READ) fprintf(file, "READ ");
+    else if (IRCode->kind == IR_WRITE) fprintf(file, "WRITE ");
+    printOperand(IRCode->one.op, file);
+  } else if (IRCode->kind == IR_CALL) {
+    // Call 语句
+    printOperand(IRCode->call.op, file);
+    fprintf(file, " := CALL ");
+    fprintf(file, "%s", IRCode->call.funcName);
+  } else if (IRCode->kind == IR_IF) {
+    // IF 语句
+    fprintf(file, "IF ");
+    printOperand(IRCode->ifcode.op1, file);
+    switch(IRCode->ifcode.relop){
+      case EQ: fprintf(file, " == "); break;
+      case NE: fprintf(file, " != "); break;
+      case GE: fprintf(file, " >= "); break;
+      case GT: fprintf(file, " > "); break;
+      case LE: fprintf(file, " <= "); break;
+      case LT: fprintf(file, " < "); break;
+    }
+    printOperand(IRCode->ifcode.op2, file);
+    fprintf(file, " GOTO %s", IRCode->ifcode.label);
+  } else if (IRCode->kind == IR_GOTO) {
+    // Goto 语句
+    fprintf(file, "GOTO %s", IRCode->name);
+  } else if (IRCode->kind == IR_DEC) {
+    // 开辟空间
+    fprintf(file, "DEC ");
+    printOperand(IRCode->two.op1, file);
+    fprintf(file, " %d", IRCode->two.op2->val);
+  } else {
+    // 不应该出现
+    fprintf(stderr, "Error in printInterCode(): Undefined Kind.\n");
+    return;
+  }
+  if (toNewLine) {
+    fprintf(file, "\n");
+  }
+}
+
 /** 打印全部中间代码 */
-void printInterCode(char* fileName) {
+void printInterCodes(char* fileName) {
   FILE* file;
   if (fileName == NULL) {
     file = stdout;
@@ -30,74 +103,10 @@ void printInterCode(char* fileName) {
     }
   }
   // 开始写入
-  while (IRList != NULL) {
-    if (IRList->kind == IR_ASSIGN) {
-      // 赋值
-      printOperand(IRList->two.op1, file);
-      fprintf(file, " := ");
-      printOperand(IRList->two.op2, file);
-      fprintf(file, "\n");
-    } else if (IRList->kind == IR_ADD || IRList->kind == IR_SUB ||
-               IRList->kind == IR_MUL || IRList->kind == IR_DIV) {
-      // 加减乘除
-      printOperand(IRList->three.op1, file);
-      fprintf(file," := ");
-      printOperand(IRList->three.op2, file);
-      if (IRList->kind == IR_ADD) fprintf(file, " + ");
-      else if (IRList->kind == IR_SUB) fprintf(file, " - ");
-      else if (IRList->kind == IR_MUL) fprintf(file, " * ");
-      else if (IRList->kind == IR_DIV) fprintf(file, " / ");
-      printOperand(IRList->three.op3, file);
-      fprintf(file, "\n");
-    } else if (IRList->kind == IR_LABEL) {
-      // Label
-      fprintf(file, "LABEL %s :\n", IRList->name);
-    } else if (IRList->kind == IR_FUNCTION) {
-      // Function
-      fprintf(file, "FUNCTION %s :\n", IRList->name);
-    } else if (IRList->kind == IR_RETURN || IRList->kind == IR_ARG || IRList->kind == IR_PARAM ||
-               IRList->kind == IR_READ || IRList->kind == IR_WRITE ) {
-      // 关键字 + 变量名
-      if (IRList->kind == IR_RETURN) fprintf(file, "RETURN ");
-      else if (IRList->kind == IR_ARG) fprintf(file, "ARG ");
-      else if (IRList->kind == IR_PARAM) fprintf(file, "PARAM ");
-      else if (IRList->kind == IR_READ) fprintf(file, "READ ");
-      else if (IRList->kind == IR_WRITE) fprintf(file, "WRITE ");
-    	printOperand(IRList->one.op, file);
-    } else if (IRList->kind == IR_CALL) {
-      // Call 语句
-      printOperand(IRList->call.op, file);
-      fprintf(file, " := CALL ");
-      fprintf(file, "%s\n", IRList->call.funcName);
-    } else if (IRList->kind == IR_IF) {
-      // IF 语句
-      fprintf(file, "IF ");
-      printOperand(IRList->ifcode.op1, file);
-      switch(IRList->ifcode.relop){
-        case EQ: fprintf(file, " == "); break;
-        case NE: fprintf(file, " != "); break;
-        case GE: fprintf(file, " >= "); break;
-        case GT: fprintf(file, " > "); break;
-        case LE: fprintf(file, " <= "); break;
-        case LT: fprintf(file, " < "); break;
-      }
-      printOperand(IRList->ifcode.op2, file);
-      fprintf(file, " GOTO %s\n", IRList->ifcode.label);
-    } else if (IRList->kind == IR_GOTO) {
-      // Goto 语句
-      fprintf(file, "GOTO %s\n", IRList->name);
-    } else if (IRList->kind == IR_DEC) {
-      // 开辟空间
-      fprintf(file, "DEC ");
-      printOperand(IRList->two.op1, file);
-      fprintf(file, " %d\n", IRList->two.op2->val);
-    } else if (IRList->kind == IR_NULL) {
-      // 空的，不输出
-    } else {
-      // 不应该出现
-      fprintf(stderr, "Error in printInterCode(): Undefined Kind.\n");
-    }
-    IRList = IRList->next;
+  InterCode* IRCode = IRList;
+  while (IRCode != NULL) {
+    printInterCode(file, IRCode, true);
+    IRCode = IRCode->next;
   }
   // 关闭文件
 	if (fileName != NULL) fclose(file);
@@ -105,6 +114,7 @@ void printInterCode(char* fileName) {
 
 /** 打印一个操作数 */
 void printOperand(Operand* op, FILE* file) {
+  if (op == NULL) return;
   if (op->kind == OP_CONST) { // 常量取值，前面加 #
     fprintf(file, "#%d", op->val);
   } else { // 取变量名
@@ -117,15 +127,169 @@ void printOperand(Operand* op, FILE* file) {
   }
 }
 
-/** 在当前位置尾部加一段中间代码，并置当前位置到新的尾部 */
-void addCodeToTail(InterCode* newCode) {
-  if (newCode == NULL) return;
-  IRTail->next = newCode;
-  newCode->prev = IRTail;
-  while (newCode->next != NULL) {
-    newCode = newCode->next;
+/** 获取中间代码头部 */
+InterCode* getInterCodeHead(InterCode* tail) {
+  if (tail == NULL) return NULL;
+  InterCode* head = tail;
+  while (head->prev != NULL) {
+    head = head->prev;
   }
-  IRTail = newCode; // 新的尾部
+  return head;
+}
+
+/** 获取中间代码尾部 */
+InterCode* getInterCodeTail(InterCode* head) {
+  if (head == NULL) return NULL;
+  InterCode* tail = head;
+  while (tail->next != NULL) {
+    tail = tail->next;
+  }
+  return tail;
+}
+
+/** 连接已知头部的两段中间代码，返回第一段中间代码的头部 */
+InterCode* linkInterCodeHeadToHead(InterCode* prevCode, InterCode* nextCode) {
+  if (prevCode == NULL) {
+    return nextCode;
+  }
+  if (nextCode == NULL) {
+    return prevCode;
+  }
+  InterCode* prevCodeTail = getInterCodeTail(prevCode);
+  // 衔接
+  prevCodeTail->next = nextCode;
+  nextCode->prev = prevCodeTail;
+  return prevCode;
+}
+
+/** 连接已知尾部和头部的两段中间代码，返回第一段中间代码的头部 */
+InterCode* linkInterCodeTailToHead(InterCode* prevCode, InterCode* nextCode) {
+  if (prevCode == NULL) {
+    return nextCode;
+  }
+  if (nextCode == NULL) {
+    return prevCode;
+  }
+  InterCode* prevCodeHead = getInterCodeHead(prevCode);
+  // 衔接
+  prevCode->next = nextCode;
+  nextCode->prev = prevCode;
+  return prevCodeHead;
+}
+
+/** 在当前位置tail后面插入一段中间代码，后面接上原来的尾部，返回新代码的尾部 */
+InterCode* addCodeToTail(InterCode* newCode, InterCode* tail) {
+  if (newCode == NULL) {
+    return tail;
+  }
+  InterCode* newCodeTail = getInterCodeTail(newCode);
+  if (tail == NULL) { // 返回新代码尾部
+    return newCodeTail;
+  }
+  // 最后面的部分
+  InterCode* afterTail = tail->next;
+  // 开始衔接：前半部分 + 新代码头部
+  tail->next = newCode;
+  newCode->prev = tail;
+  // 开始衔接：新代码尾部 + 后半部分
+  newCodeTail->next = afterTail;
+  if (afterTail != NULL) {
+    afterTail->prev = newCodeTail;
+  }
+  if (yyget_debug()) {
+    printf("Add Code to Tail: ");
+    printInterCode(stdout, newCode, false);
+    if (newCode != newCodeTail) {
+      printf(" -> ... -> ");
+      printInterCode(stdout, newCodeTail, false);
+    }
+    printf("\n  Context: ");
+    printInterCode(stdout, newCode->prev, false);
+    printf(" -> (Added) -> ");
+    printInterCode(stdout, newCodeTail->next, true);
+  }
+  return newCodeTail;
+}
+
+/** 获取一个操作数名字（用于临时变量/Label等取名） */
+char* getOpName(char* body, int num) {
+  char* result = (char*)malloc(64 * sizeof(char));
+  result[0] = '\0';
+  strcat(result, body);
+  strcat(result, itoa(num));
+  return result;
+}
+
+/** 检查一个Exp是否是Condition */
+bool isCondition(Node* expNode) {
+  if (childrenMatch(expNode, 1, TN_NOT)) {
+    return true;
+  } else {
+    Node* opNode = getCertainChild(expNode, 2);
+    if (opNode == NULL) {
+      return false;
+    } else if (isRelop(opNode->name) || opNode->name == TN_AND || opNode->name == TN_OR) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** 判断是否是 Relop */
+bool isRelop(NodeName name) {
+  switch (name) {
+    case TN_EQ: case TN_NE: case TN_LE:
+    case TN_GE: case TN_LT: case TN_GT:
+    return true;
+    default: return false;
+  }
+}
+
+/** 获取 Exp 的 Relop */
+Relop getExpRelop(NodeName name) {
+  switch (name) {
+    case TN_EQ: return EQ;
+    case TN_NE: return NE;
+    case TN_LE: return LE;
+    case TN_GE: return GE;
+    case TN_LT: return LT;
+    case TN_GT: return GT;
+    default: return EQ;
+  }
+}
+
+/** 从符号表获取变量 */
+Operand* lookUpVar(char* name) {
+  int index = findInSymList(name, 0, interVarNum, interVarList);
+  if (index < 0) { // 不应该这样
+    if (yyget_debug()) fprintf(stderr, "Error in Lab3, Undefined Var: %s.\n", name);
+    return NULL;
+  } else {
+    return createOperand(OP_VAR, name);
+  }
+}
+
+/** 从符号表获取函数 */
+Operand* lookUpFunc(char* name) {
+  int index = findInSymList(name, 0, funcSymListLen, funcSymList);
+  if (index < 0) { // 不应该这样
+    if (yyget_debug()) fprintf(stderr, "Error in Lab3, Undefined Function: %s.\n", name);
+    return NULL;
+  } else {
+    return createOperand(OP_VAR, name);
+  }
+}
+
+/** 创建一个临时变量 */
+Operand* newTemp() {
+  tempCount += 1;
+  return createOperand(OP_TEMP, getOpName("t", tempCount));
+}
+
+/** 创建一个Label */
+char* newLabel() {
+  labelCount += 1;
+  return getOpName("label", labelCount);
 }
 
 /** 创建一个操作数（不是常数） */
@@ -142,15 +306,6 @@ Operand* createConst(int val) {
   op->kind = OP_CONST;
   op->val = val;
   return op;
-}
-
-/** 创建一个空中间代码作为链表头 */
-InterCode* createInterCodeNull() {
-  InterCode* code = (InterCode*)malloc(sizeof(InterCode));
-  code->kind = IR_NULL;
-  code->prev = NULL;
-  code->next = NULL;
-  return code;
 }
 
 /** 创建一个无操作数的中间代码，包括：LABEL, FUNCTION, GOTO */
@@ -171,4 +326,68 @@ InterCode* createInterCodeOne(IRKind kind, Operand* op) {
   code->prev = NULL;
   code->next = NULL;
   return code;
+}
+
+/** 创建双操作数的中间代码，包括：ASSIGN, DEC */
+InterCode* createInterCodeTwo(IRKind kind, Operand* op1, Operand* op2) {
+  InterCode* code = (InterCode*)malloc(sizeof(InterCode));
+  code->kind = kind;
+  code->two.op1 = op1;
+  code->two.op2 = op2;
+  code->prev = NULL;
+  code->next = NULL;
+  return code;
+}
+
+/** 创建三操作数的中间代码，包括：ADD, SUB, MUL, DIV */
+InterCode* createInterCodeThree(IRKind kind, Operand* op1, Operand* op2, Operand* op3) {
+  InterCode* code = (InterCode*)malloc(sizeof(InterCode));
+  code->kind = kind;
+  code->three.op1 = op1;
+  code->three.op2 = op2;
+  code->three.op3 = op3;
+  code->prev = NULL;
+  code->next = NULL;
+  return code;
+}
+
+/** 创建If语句的中间代码 */
+InterCode* createInterCodeIf(Operand* op1, Relop relop, Operand* op2, char* label) {
+  InterCode* code = (InterCode*)malloc(sizeof(InterCode));
+  code->kind = IR_IF;
+  code->ifcode.op1 = op1;
+  code->ifcode.relop = relop;
+  code->ifcode.op2 = op2;
+  code->ifcode.label = label;
+  code->prev = NULL;
+  code->next = NULL;
+  return code;
+}
+
+/** 创建Call的中间代码 */
+InterCode* createInterCodeCall(IRKind kind, Operand* op, char* funcName) {
+  InterCode* code = (InterCode*)malloc(sizeof(InterCode));
+  code->kind = kind;
+  code->call.op = op;
+  code->call.funcName = funcName;
+  code->prev = NULL;
+  code->next = NULL;
+  return code;
+}
+
+/* 计算内存空间（Basic/结构体/数组） */
+int getVarMemory(Type* type) {
+  if (type->kind == T_STRUCT) { // 结构体
+    TypeNode* structNode = type->structure.node;
+    int mem = 0;
+    while (structNode != NULL) {
+      mem += getVarMemory(structNode->type);
+      structNode = structNode->next;
+    }
+    return mem;
+  } else if (type->kind == T_ARRAY) { // 数组
+    return (type->array.length * getVarMemory(type->array.eleType));
+  } else {
+    return 4;
+  }
 }

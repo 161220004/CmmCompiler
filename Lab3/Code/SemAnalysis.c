@@ -53,7 +53,7 @@
 void semanticAnalysis() {
   if (!isError()) {
     if (isLab(2) || isLab(3)) {
-      handleProgram();
+      if (root != NULL) handleProgram();
     }
   }
 }
@@ -83,7 +83,7 @@ void handleProgram() {
       reportError(18, funcSymList[i].func->lineno, funcSymList[i].func->name, NULL);
     }
   }
-  if (yyget_debug()) {
+  if (yyget_debug() && isLab(2)) {
     printf("Global Field: \n  ");
     printFieldNode(globalField);
     printf("Function Symbol List (len = %d): \n  ", funcSymListLen);
@@ -127,7 +127,7 @@ void handleExtDef(Node* extDefNode) {
           reportError(19, funcNode->lineno, idNode->cval, NULL);
         }
       }
-      if(yyget_debug()) {
+      if(yyget_debug() && isLab(2)) {
         printf("Declare Function: \n  ");
         printFunction(decFunc, true);
       }
@@ -149,7 +149,7 @@ void handleExtDef(Node* extDefNode) {
           preDefFunc->isDefined = true; // 无论是否一致，都视为已定义
         }
       }
-      if(yyget_debug()) {
+      if(yyget_debug() && isLab(2)) {
         printf("Define Function: \n  ");
         printFunction(defFunc, true);
       }
@@ -159,7 +159,7 @@ void handleExtDef(Node* extDefNode) {
       currentField = funcField; // 当前作用域置为函数作用域
       handleCompSt(compStNode); // 开始进入函数作用域内部进行分析
       currentField = currentField->parent; // 解决完函数内部后重置作用域到外部
-      if (yyget_debug()) {
+      if (yyget_debug() && isLab(2)) {
         printf("Function Field: \n  ");
         printFieldNode(funcField);
       }
@@ -226,7 +226,7 @@ Type* handleStructSpecifier(Node* structSpecNode, bool isSemi) {
       }
       structNode = structNode->next;
     }
-    if (yyget_debug()) {
+    if (yyget_debug() && isLab(2)) {
       printf("Struct Definition: \n  ");
       printStruct(structType);
     }
@@ -331,7 +331,7 @@ void handleStmt(Node* stmtNode, FieldType extField) {
     currentField = field; // 当前作用域置为新建的作用域
     handleCompSt(compStNode); // 开始进入新建的作用域内部进行分析
     currentField = currentField->parent; // 解决完新建的作用域内部后重置作用域到外部
-    if (yyget_debug()) {
+    if (yyget_debug() && isLab(2)) {
       printf("Child Field: \n  ");
       printFieldNode(field);
     }
