@@ -263,6 +263,7 @@ void addToVarList(TypeNode* addVar, SymElem* varList, int varListLen) {
       varList[i].isNull = false;
       varList[i].name = addVar->name;
       varList[i].type = addVar->type;
+      varList[i].isParam = false;
       break; // 结束
     } else { // 比较大小，保持有序
       int result = strcmp(addVar->name, varList[i].name);
@@ -272,11 +273,13 @@ void addToVarList(TypeNode* addVar, SymElem* varList, int varListLen) {
             varList[j + 1].isNull = varList[j].isNull;
             varList[j + 1].name = varList[j].name;
             varList[j + 1].type = varList[j].type;
+            varList[j + 1].isParam = varList[j].isParam;
           }
         }
         varList[i].isNull = false;
         varList[i].name = addVar->name;
         varList[i].type = addVar->type;
+        varList[i].isParam = false;
         break; // 结束
       }
     }

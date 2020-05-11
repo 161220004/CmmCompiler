@@ -271,6 +271,7 @@ void setVarToParam(char* name) {
   } else {
     interVarList[index].isParam = true;
   }
+  if (yyget_debug()) printf("Set \"%s\" to Param\n", name);
 }
 
 /** 检查某变量是否是参数模式 */
@@ -501,4 +502,18 @@ int getFieldPosInStruct(char* name, Type* type) {
     if (yyget_debug()) fprintf(stderr, "Var to Calculate Must be Structure\n");
     return 0;
   }
+}
+
+/* DEBUG: 打印IR符号表 */
+void printIRVarList() {
+  for (int i = 0; i < interVarNum; i++) {
+    if (!interVarList[i].isNull) {
+      printf("[\"%s\", ", interVarList[i].name);
+      if (interVarList[i].isParam) printf("isParam");
+      else printf("isVar");
+      printf("] -> ");
+    }
+    else break;
+  }
+  printf("NULL\n");
 }

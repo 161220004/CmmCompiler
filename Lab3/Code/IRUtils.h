@@ -53,5 +53,6 @@ InterCode* createInterCodeCall(IRKind kind, Operand* op, char* funcName);
 int getVarMemory(Type* type);
 char* getArrayName(Node* expNode);
 int getFieldPosInStruct(char* name, Type* type);
+void printIRVarList();
 
 #endif

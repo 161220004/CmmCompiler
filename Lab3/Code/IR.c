@@ -22,6 +22,8 @@ void translateProgram() {
   createGlobalField(interVarNum, interVarList);
   // 开始逐层分析
   IRList = translateExtDefList(getCertainChild(root, 1), NULL);
+  
+  if (yyget_debug()) printIRVarList();
 }
 
 /* ExtDefList: 检查一系列全局变量、结构体或函数的定义 */
@@ -375,7 +377,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
         Type* arrayType = lookUpArrayType(arrayName);
         // 新的临时变量：取到数组“[]”内的字节处的地址
         Operand* addrOp = newTemp();
-        InterCode* getAddrCode = translateArrayAddr(expNode1, arrayName, varIsParam(arrayName), arrayType, NULL, addrOp);
+        InterCode* getAddrCode = translateArrayAddr(expNode1, arrayName, arrayType, NULL, addrOp);
         // 右值赋给数组内容
         Operand* getContOp = createOperand(OP_GETCONT, addrOp->name);
         InterCode* setContCode = createInterCodeTwo(IR_ASSIGN, getContOp, rightOp);
@@ -429,7 +431,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
       Type* arrayType = lookUpArrayType(arrayName);
       // 新的临时变量：取到数组“[]”内的字节处的地址
       Operand* addrOp = newTemp();
-      InterCode* getAddrCode = translateArrayAddr(expNode, arrayName, varIsParam(arrayName), arrayType, NULL, addrOp);
+      InterCode* getAddrCode = translateArrayAddr(expNode, arrayName, arrayType, NULL, addrOp);
       // 取到该地址内的值，放入place
       Operand* getContOp = createOperand(OP_GETCONT, addrOp->name);
       InterCode* getContCode = createInterCodeTwo(IR_ASSIGN, place, getContOp);
@@ -442,7 +444,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
 }
 
 /** Exp: 数组访问的位置代码，保证参数 Exp 是 Array */
-InterCode* translateArrayAddr(Node* expNode, char* arrayName, bool isParam, Type* type, Operand* inhOp, Operand* place) {
+InterCode* translateArrayAddr(Node* expNode, char* arrayName, Type* type, Operand* inhOp, Operand* place) {
   if (childrenMatch(expNode, 2, TN_LB)) { // 数组还有层数
     Node* arrayNode = getCertainChild(expNode, 1);
     // 先降级Type
@@ -468,7 +470,7 @@ InterCode* translateArrayAddr(Node* expNode, char* arrayName, bool isParam, Type
       // 取到当前累加的字节位置的地址，放入place
       Operand* addrOp = newTemp();
       Operand* getAddrOp = NULL;
-      if (isParam) { // 参数本身就是地址，不需要取址
+      if (varIsParam(arrayName)) { // 参数本身就是地址，不需要取址
         getAddrOp = createOperand(OP_VAR, arrayName);
       } else { // 变量需要额外取址
         getAddrOp = createOperand(OP_GETADDR, arrayName);
@@ -477,7 +479,7 @@ InterCode* translateArrayAddr(Node* expNode, char* arrayName, bool isParam, Type
       return linkInterCodeHeadToHead(arrayCode, getAddrCode);
     } else { // 还有好多层
       // 计算下一层的结果
-      InterCode* lowerCode = translateArrayAddr(arrayNode, arrayName, isParam, type, nextInhOp, place);
+      InterCode* lowerCode = translateArrayAddr(arrayNode, arrayName, type, nextInhOp, place);
       // 连接本层和下一层的代码
       return linkInterCodeHeadToHead(arrayCode, lowerCode);
     }

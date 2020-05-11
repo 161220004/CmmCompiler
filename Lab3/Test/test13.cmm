@@ -7,5 +7,5 @@ int main(){
 	array[0]=array[1]=array[2]=2;
 	{int c = add(add(array[0],array[1]),array[2]);}
 	write(c);
-	write(add(1,2));
+	return add(1,2);
 }
