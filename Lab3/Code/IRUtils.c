@@ -82,7 +82,7 @@ void printInterCode(FILE* file, InterCode* IRCode, bool toNewLine) {
     fprintf(file, " %d", IRCode->two.op2->val);
   } else {
     // 不应该出现
-    fprintf(stderr, "Error in printInterCode(): Undefined Kind.\n");
+    fprintf(stderr, "Error in printInterCode(): Undefined Kind %d.\n", IRCode->kind);
     return;
   }
   if (toNewLine) {
@@ -269,6 +269,28 @@ Operand* lookUpVar(char* name) {
   }
 }
 
+/** 从符号表获取数组 */
+Type* lookUpArrayType(char* name) {
+  int index = findInSymList(name, 0, interVarNum, interVarList);
+  if (index < 0) { // 不应该这样
+    if (yyget_debug()) fprintf(stderr, "Error in Lab3, Undefined Var: %s.\n", name);
+    return NULL;
+  } else {
+    return interVarList[index].type;
+  }
+}
+
+/** 从符号表获取结构体变量类型 */
+Type* lookUpStructType(char* name) {
+  int index = findInSymList(name, 0, interVarNum, interVarList);
+  if (index < 0) { // 不应该这样
+    if (yyget_debug()) fprintf(stderr, "Error in Lab3, Undefined Structure Var: %s.\n", name);
+    return NULL;
+  } else {
+    return interVarList[index].type;
+  }
+}
+
 /** 从符号表获取函数 */
 Operand* lookUpFunc(char* name) {
   int index = findInSymList(name, 0, funcSymListLen, funcSymList);
@@ -389,5 +411,33 @@ int getVarMemory(Type* type) {
     return (type->array.length * getVarMemory(type->array.eleType));
   } else {
     return 4;
+  }
+}
+
+/* 获取数组ID */
+char* getArrayName(Node* expNode) {
+  while (childrenMatch(expNode, 1, NTN_EXP)) {
+    return getArrayName(getCertainChild(expNode, 1));
+  }
+  if (childrenMatch(expNode, 1, TN_ID)) {
+    return getCertainChild(expNode, 1)->cval;
+  } else {
+    return NULL;
+  }
+}
+
+/* 获取结构体某个域的位置 */
+int getFieldPosInStruct(char* name, Type* type) {
+  if (type->kind == T_STRUCT) {
+    TypeNode* structNode = type->structure.node;
+    int sum = 0;
+    while (strcmp(structNode->name, name) != 0) {
+      sum += getVarMemory(structNode->type);
+      structNode = structNode->next;
+    }
+    return sum;
+  } else {
+    if (yyget_debug()) fprintf(stderr, "Var to Calculate Must be Structure\n");
+    return 0;
   }
 }

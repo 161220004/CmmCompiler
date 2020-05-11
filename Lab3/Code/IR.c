@@ -147,6 +147,9 @@ InterCode* translateDec(Node* decNode, Type* defType) {
     // 创建临时变量以获取表达式的值
     Operand* opTmp = newTemp();
     expCode = translateExp(getCertainChild(decNode, 3), opTmp); // 已经包含代码：表达式的值赋值给该变量
+    Operand* varOp = createOperand(OP_VAR, decTypeNode->name);
+    InterCode* assignCode = createInterCodeTwo(IR_ASSIGN, varOp, opTmp);
+    expCode = linkInterCodeHeadToHead(expCode, assignCode);
   }
   return linkInterCodeHeadToHead(decCode, expCode);
 }
@@ -174,82 +177,44 @@ InterCode* translateStmt(Node* stmtNode) {
     InterCode* expCode = translateExp(getCertainChild(stmtNode, 2), opTmp); // 表达式代码的头部
     InterCode* returnCode = createInterCodeOne(IR_RETURN, opTmp);
     return linkInterCodeHeadToHead(expCode, returnCode);
-  } else { // IF-ELSE条件语句 / WHILE循环语句
-    InterCode* ifExpCode = NULL; // 条件部分的全部代码的头部
-    // 如果是 while语句，开始前给一个Label
-    char* whileLabel = NULL;
-    if (childrenMatch(stmtNode, 1, TN_WHILE)) {
-      whileLabel = newLabel();
-      ifExpCode = createInterCodeName(IR_LABEL, whileLabel);
-    }
-    // 新建 if (true) 对应的 Label 名字
-    char* ifLabel = newLabel();
-    // 分别获取条件表达式左侧和右侧代码的头部，再与IF代码连接起来
+  } else if (childrenMatch(stmtNode, 1, TN_IF)) { // IF-ELSE条件语句
     Node* expNode = getCertainChild(stmtNode, 3);
-    Node* relopNode = getCertainChild(expNode, 2);
-    if (relopNode->name == TN_EQ || relopNode->name == TN_NE || relopNode->name == TN_LE ||
-        relopNode->name == TN_GE || relopNode->name == TN_LT || relopNode->name == TN_GT) { // op1 [relop] op2
-      // 新建条件表达式的两个临时变量（Lab3默认Exp表达式必然是“x [relop] y”格式）
-      Operand* opTmp1 = newTemp();
-      Operand* opTmp2 = newTemp();
-      // 分别获取条件表达式左侧和右侧代码的头部：expCode1, expCode2
-      InterCode* expCode1 = translateExp(getCertainChild(expNode, 1), opTmp1);
-      InterCode* expCode2 = translateExp(getCertainChild(expNode, 3), opTmp2);
-      Relop relop;
-      switch (relopNode->name) {
-        case TN_EQ: relop = EQ; break;
-        case TN_NE: relop = NE; break;
-        case TN_LE: relop = LE; break;
-        case TN_GE: relop = GE; break;
-        case TN_LT: relop = LT; break;
-        case TN_GT: relop = GT; break;
-        default: relop = EQ;
-      }
-      InterCode* ifCondCode = createInterCodeIf(opTmp1, relop, opTmp2, ifLabel);
-      // 连接：ifExpCode + expCode1 + expCode2 + ifCondCode -> ifExpCode
-      InterCode* expCode = linkInterCodeHeadToHead(expCode1, expCode2);
-      expCode = linkInterCodeHeadToHead(expCode, ifCondCode);
-      ifExpCode = linkInterCodeHeadToHead(ifExpCode, expCode);
-    } else {
-      if (yyget_debug()) fprintf(stderr, "Only Support IF Condition as \"x [relop] y\".\n");
-      ifExpCode = createInterCodeIf(NULL, EQ, NULL, ifLabel);
+    char* newLab1 = newLabel();
+    char* newLab2 = newLabel();
+    InterCode* trueLab = createInterCodeName(IR_LABEL, newLab1);
+    InterCode* falseLab = createInterCodeName(IR_LABEL, newLab2);
+    InterCode* code1 = translateCond(expNode, trueLab, falseLab);
+    InterCode* code2 = translateStmt(getCertainChild(stmtNode, 5));
+    if (childrenMatch(stmtNode, 6, TN_ELSE)) { // 有 ELSE
+      char* newLab3 = newLabel();
+      InterCode* endLab = createInterCodeName(IR_LABEL, newLab3);
+      InterCode* code3 = translateStmt(getCertainChild(stmtNode, 7));
+      InterCode* code = linkInterCodeHeadToHead(code3, endLab);
+      code = linkInterCodeHeadToHead(falseLab, code);
+      code = linkInterCodeHeadToHead(createInterCodeName(IR_GOTO, newLab3), code);
+      code = linkInterCodeHeadToHead(code2, code);
+      code = linkInterCodeHeadToHead(trueLab, code);
+      return linkInterCodeHeadToHead(code1, code);
+    } else { // 无ELSE
+      InterCode* code = linkInterCodeHeadToHead(code2, falseLab);
+      code = linkInterCodeHeadToHead(trueLab, code);
+      return linkInterCodeHeadToHead(code1, code);
     }
-    // 新建整个IFELSE/WHILE语句结束后面的 Label
-    char* endLabel = newLabel();
-    InterCode* endLabelCode = createInterCodeName(IR_LABEL, endLabel);
-    // 获取 if (true) 对应的 Stmt 内容
-    InterCode* ifStmtLabCode = createInterCodeName(IR_LABEL, ifLabel);
-    InterCode* ifStmtBodyCode = translateStmt(getCertainChild(stmtNode, 5));
-    InterCode* ifStmtGotoCode = NULL;
-    if (childrenMatch(stmtNode, 1, TN_WHILE)) { // WHILE
-      ifStmtGotoCode = createInterCodeName(IR_GOTO, whileLabel);
-    } else { // IF / IF-ELSE
-      ifStmtGotoCode = createInterCodeName(IR_GOTO, endLabel);
-    }
-    // 连接：ifStmtLabCode + ifStmtBodyCode + ifStmtGotoCode -> ifStmtCode
-    InterCode* ifStmtCode = linkInterCodeHeadToHead(ifStmtBodyCode, ifStmtGotoCode);
-    ifStmtCode = linkInterCodeHeadToHead(ifStmtLabCode, ifStmtCode);
-    // 如果有，处理IF-ELSE还有的 Else 语句，Goto 地址是 elseLabel；如果没有，Goto 地址是 endLabel
-    InterCode* elseGotoCode = NULL;
-    InterCode* elseStmtCode = NULL;
-    if (childrenMatch(stmtNode, 6, TN_ELSE)) {
-      // 新建 ELSE 语句对应的的 Label
-      char* elseLabel = newLabel();
-      elseGotoCode = createInterCodeName(IR_GOTO, elseLabel);
-      InterCode* elseStmtLabCode = createInterCodeName(IR_LABEL, elseLabel);
-      InterCode* elseStmtBodyCode = translateStmt(getCertainChild(stmtNode, 7));
-      InterCode* elseStmtGotoCode = createInterCodeName(IR_GOTO, endLabel);
-      // 连接：elseStmtLabCode + elseStmtBodyCode + elseStmtGotoCode -> elseStmtCode
-      elseStmtCode = linkInterCodeHeadToHead(elseStmtBodyCode, elseStmtGotoCode);
-      elseStmtCode = linkInterCodeHeadToHead(elseStmtLabCode, elseStmtCode);
-    } else {
-      elseGotoCode = createInterCodeName(IR_GOTO, endLabel);
-    }
-    // 连接：ifExpCode + elseGotoCode + ifStmtCode + elseStmtCode + endLabelCode
-    InterCode* ifAllCode = linkInterCodeHeadToHead(elseStmtCode, endLabelCode);
-    ifAllCode = linkInterCodeHeadToHead(ifStmtCode, ifAllCode);
-    ifAllCode = linkInterCodeHeadToHead(elseGotoCode, ifAllCode);
-    return linkInterCodeHeadToHead(ifExpCode, ifAllCode);
+  } else { // WHILE循环语句
+    Node* expNode = getCertainChild(stmtNode, 3);
+    char* newLab1 = newLabel();
+    char* newLab2 = newLabel();
+    char* newLab3 = newLabel();
+    InterCode* startLab = createInterCodeName(IR_LABEL, newLab1);
+    InterCode* trueLab = createInterCodeName(IR_LABEL, newLab2);
+    InterCode* falseLab = createInterCodeName(IR_LABEL, newLab3);
+    InterCode* code1 = translateCond(expNode, trueLab, falseLab);
+    InterCode* code2 = translateStmt(getCertainChild(stmtNode, 5));
+    InterCode* code = linkInterCodeHeadToHead(createInterCodeName(IR_GOTO, newLab1), falseLab);
+    code = linkInterCodeHeadToHead(code2, code);
+    code = linkInterCodeHeadToHead(trueLab, code);
+    code = linkInterCodeHeadToHead(code1, code);
+    return linkInterCodeHeadToHead(startLab, code);
   }
 }
 
@@ -331,21 +296,31 @@ InterCode* translateExp(Node* expNode, Operand* place) {
       return createInterCodeTwo(IR_ASSIGN, place, varOp);
     } else { // 函数调用
       Operand* funcOp = lookUpFunc(idNode->cval);
-      if (childrenMatch(expNode, 3, TN_RP)) { // 无参数
-        if (strcmp(funcOp->name, "read") == 0) {
-          return createInterCodeOne(IR_READ, funcOp);
-        } else {
-          return createInterCodeCall(IR_CALL, place, funcOp->name);
-        }
-      } else { // 有参数
+      if (childrenMatch(expNode, 3, NTN_ARGS)) { // 有参数
         InterCode* argsCode = createInterCodeOne(IR_ARG, NULL); // 第一个是空节点
         InterCode* argsExpCode = translateArgs(getCertainChild(expNode, 3), NULL, argsCode);
+        // 此刻argsCode依然指向尾部的空节点，我们把空节点删除，然后把它指向头节点
+        InterCode* argsCodeDel = argsCode;
+        argsCode = argsCodeDel->prev;
+        if (argsCode == NULL && yyget_debug()) {
+          fprintf(stderr, "Failed to Receive Args.\n");
+        } else {
+          argsCodeDel->prev = NULL;
+          argsCode->next = NULL;
+        }
+        argsCode = getInterCodeHead(argsCode);
         if (strcmp(funcOp->name, "write") == 0) {
-          return linkInterCodeHeadToHead(argsExpCode, createInterCodeOne(IR_WRITE, funcOp));
+          return linkInterCodeHeadToHead(argsExpCode, createInterCodeOne(IR_WRITE, argsCode->one.op));
         } else {
           argsCode = linkInterCodeHeadToHead(argsExpCode, argsCode);
           InterCode* callCode = createInterCodeCall(IR_CALL, place, funcOp->name);
           return linkInterCodeHeadToHead(argsCode, callCode);
+        }
+      } else { // 无参数
+        if (strcmp(funcOp->name, "read") == 0) {
+          return createInterCodeOne(IR_READ, place);
+        } else {
+          return createInterCodeCall(IR_CALL, place, funcOp->name);
         }
       }
     }
@@ -360,11 +335,48 @@ InterCode* translateExp(Node* expNode, Operand* place) {
     Node* opNode = getCertainChild(expNode, 2);
     if (opNode->name == TN_ASSIGNOP) { // 赋值
       // Exp1只能是三种情况之一（单个变量访问、数组元素访问或结构体特定域的访问）
-      Node* expNode1 = getCertainChild(expNode, 1);
-      if (childrenMatch(expNode1, 1, TN_ID)) { // 单个变量访问
-
-      } else { // 数组元素访问或结构体特定域的访问
-
+      Node* expNode1 = getCertainChild(expNode, 1); // 左值
+      Node* expNode2 = getCertainChild(expNode, 3); // 右值
+      // 右侧的值赋给一个新的临时变量
+      Operand* rightOp = newTemp();
+      InterCode* rightCode = translateExp(expNode2, rightOp);
+      if (childrenMatch(expNode1, 1, TN_ID)) { // 左值是单个变量访问
+        Operand* varOp = lookUpVar(getCertainChild(expNode1, 1)->cval);
+        InterCode* assignCode = createInterCodeTwo(IR_ASSIGN, varOp, rightOp);
+        if (place != NULL) {
+          InterCode* placeCode = createInterCodeTwo(IR_ASSIGN, place, varOp);
+          assignCode = linkInterCodeHeadToHead(assignCode, placeCode);
+        }
+        return linkInterCodeHeadToHead(rightCode, assignCode);
+      } else if (childrenMatch(expNode1, 2, TN_LB)) { // 左值是数组元素访问
+        char* arrayName = getArrayName(expNode1);
+        if (arrayName == NULL) {
+          if (yyget_debug()) fprintf(stderr, "Array Name is Not Valid.\n");
+          return rightCode;
+        }
+        // 查符号表，得到数组类型
+        Type* arrayType = lookUpArrayType(arrayName);
+        // 新的临时变量：取到数组“[]”内的字节处的地址
+        Operand* addrOp = newTemp();
+        InterCode* getAddrCode = translateArrayAddr(expNode, arrayName, arrayType, NULL, addrOp);
+        // 右值赋给数组内容
+        Operand* getContOp = createOperand(OP_GETCONT, addrOp->name);
+        InterCode* setContCode = createInterCodeTwo(IR_ASSIGN, getContOp, rightOp);
+        // 连接：rightCode + getAddrCode + setContCode
+        InterCode* code = linkInterCodeHeadToHead(getAddrCode, setContCode);
+        return linkInterCodeHeadToHead(rightCode, code);
+      } else if (childrenMatch(expNode1, 2, TN_DOT)) { // 左值是结构体特定域的访问
+        // 新的临时变量：取到结构体访问的字节处的地址
+        Operand* addrOp = newTemp();
+        InterCode* getAddrCode = translateStructAddr(expNode, addrOp);
+        Operand* getContOp = createOperand(OP_GETCONT, addrOp->name);
+        InterCode* setContCode = createInterCodeTwo(IR_ASSIGN, getContOp, rightOp);
+        // 连接：rightCode + getAddrCode + setContCode
+        InterCode* code = linkInterCodeHeadToHead(getAddrCode, setContCode);
+        return linkInterCodeHeadToHead(rightCode, code);
+      } else {
+        if (yyget_debug()) fprintf(stderr, "Not Support This as Left Value in Assign.");
+        return rightCode;
       }
     } else if (opNode->name == TN_PLUS || opNode->name == TN_MINUS ||
                opNode->name == TN_STAR || opNode->name == TN_DIV) { // 加减乘除
@@ -384,10 +396,91 @@ InterCode* translateExp(Node* expNode, Operand* place) {
       InterCode* code = linkInterCodeHeadToHead(code2, code3);
       return linkInterCodeHeadToHead(code1, code);
     } else if (opNode->name == TN_DOT) {  // 结构体访问
-
+      // 新的临时变量：取到结构体访问的字节处的地址
+      Operand* addrOp = newTemp();
+      InterCode* getAddrCode = translateStructAddr(expNode, addrOp);
+      Operand* getContOp = createOperand(OP_GETCONT, addrOp->name);
+      InterCode* getContCode = createInterCodeTwo(IR_ASSIGN, place, getContOp);
+      return linkInterCodeHeadToHead(getAddrCode, getContCode);
     } else if (opNode->name == TN_LB) {  // 数组访问
-
+      char* arrayName = getArrayName(expNode);
+      if (arrayName == NULL) {
+        if (yyget_debug()) fprintf(stderr, "Array Name is Not Valid.\n");
+        return NULL;
+      }
+      // 查符号表，得到数组类型
+      Type* arrayType = lookUpArrayType(arrayName);
+      // 新的临时变量：取到数组“[]”内的字节处的地址
+      Operand* addrOp = newTemp();
+      InterCode* getAddrCode = translateArrayAddr(expNode, arrayName, arrayType, NULL, addrOp);
+      // 取到该地址内的值，放入place
+      Operand* getContOp = createOperand(OP_GETCONT, addrOp->name);
+      InterCode* getContCode = createInterCodeTwo(IR_ASSIGN, place, getContOp);
+      return linkInterCodeHeadToHead(getAddrCode, getContCode);
+    } else {
+      if (yyget_debug()) fprintf(stderr, "Should Not Enter Here.\n");
+      return NULL;
     }
+  }
+}
+
+/** Exp: 数组访问的位置代码，保证参数 Exp 是 Array */
+InterCode* translateArrayAddr(Node* expNode, char* arrayName, Type* type, Operand* inhOp, Operand* place) {
+  if (childrenMatch(expNode, 2, TN_LB)) { // 数组还有层数
+    Node* arrayNode = getCertainChild(expNode, 1);
+    // 先降级Type
+    type = type->array.eleType;
+    // 获取“[]”内的值
+    Operand* elePosOp = newTemp();
+    InterCode* elePosCode = translateExp(getCertainChild(expNode, 3), elePosOp);
+    // 计算对应的字节位置
+    Operand* bytePosOp = newTemp();
+    Operand* sizeOp = createConst(getVarMemory(type));
+    InterCode* bytePosCode = createInterCodeThree(IR_MUL, bytePosOp, elePosOp, sizeOp);
+    // 连接：现在得到当前层的字节位置，接下来根据inhOp进行累加
+    InterCode* arrayCode = linkInterCodeHeadToHead(elePosCode, bytePosCode);
+    Operand* nextInhOp = bytePosOp; // 传给下一个的inhOp
+    if (inhOp != NULL) { // 不是第一个，累加
+      Operand* sumOp = newTemp();
+      InterCode* sumCode = createInterCodeThree(IR_ADD, sumOp, bytePosOp, inhOp);
+      arrayCode = linkInterCodeHeadToHead(arrayCode, sumCode);
+      nextInhOp = sumOp;
+    }
+    // 现在nextInhOp为全部已知层叠加后的字节位置
+    if (childrenMatch(arrayNode, 1, TN_ID)) { // 最后一层
+      // 取到当前累加的字节位置的地址，放入place
+      Operand* addrOp = newTemp();
+      Operand* getAddrOp = createOperand(OP_GETADDR, arrayName);
+      InterCode* getAddrCode = createInterCodeThree(IR_ADD, place, getAddrOp, nextInhOp);
+      return linkInterCodeHeadToHead(arrayCode, getAddrCode);
+    } else { // 还有好多层
+      // 计算下一层的结果
+      InterCode* lowerCode = translateArrayAddr(arrayNode, arrayName, type, nextInhOp, place);
+      // 连接本层和下一层的代码
+      return linkInterCodeHeadToHead(arrayCode, lowerCode);
+    }
+  } else {
+    if (yyget_debug()) fprintf(stderr, "Only Translate Array Here.\n");
+    return NULL;
+  }
+}
+
+/** Exp: 结构体访问的位置代码，保证参数 Exp 是 Structure */
+InterCode* translateStructAddr(Node* expNode, Operand* place) {
+  Node* structID = getCertainChild(getCertainChild(expNode, 1), 1);
+  if (structID->name != TN_ID || structID->nextSibling != NULL) {
+    if (yyget_debug()) fprintf(stderr, "Structure to Access is Not Valid.\n");
+    return NULL;
+  }
+  Type* structType = lookUpStructType(structID->cval);
+  int fieldPos = getFieldPosInStruct(getCertainChild(expNode, 3)->cval, structType);
+  // 结构体域地址放入place
+  Operand* getAddrOp = createOperand(OP_GETADDR, structID->cval);
+  if (fieldPos == 0) {
+    return createInterCodeTwo(IR_ASSIGN, place, getAddrOp);
+  } else {
+    Operand* biaOp = createConst(fieldPos);
+    return createInterCodeThree(IR_ADD, place, getAddrOp, biaOp);
   }
 }
 

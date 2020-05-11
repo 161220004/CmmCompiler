@@ -30,6 +30,8 @@ bool isCondition(Node* expNode);
 bool isRelop(NodeName name);
 Relop getExpRelop(NodeName name);
 Operand* lookUpVar(char* name);
+Type* lookUpArrayType(char* name);
+Type* lookUpStructType(char* name);
 Operand* lookUpFunc(char* name);
 Operand* newTemp();
 char* newLabel();
@@ -42,5 +44,7 @@ InterCode* createInterCodeThree(IRKind kind, Operand* op1, Operand* op2, Operand
 InterCode* createInterCodeIf(Operand* op1, Relop relop, Operand* op2, char* label);
 InterCode* createInterCodeCall(IRKind kind, Operand* op, char* funcName);
 int getVarMemory(Type* type);
+char* getArrayName(Node* expNode);
+int getFieldPosInStruct(char* name, Type* type);
 
 #endif
