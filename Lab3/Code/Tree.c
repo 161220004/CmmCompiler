@@ -6,6 +6,8 @@ int errorflag = 0;
 
 int labflag = 1; // 第几次实验
 
+int processflag = 1; // 步骤（ 1: Lab1， 2: Lab2， 3: Lab3， 4: Lab4）
+
 char* getStrncpy(char* str) {
   int len = strlen(str);
   char* cp = (char*)malloc(sizeof(char) * len);
@@ -129,6 +131,13 @@ void setLabFlag(int n) {
 }
 bool isLab(int n) {
   return (labflag == n);
+}
+
+void setProcessFlag(int n) {
+  processflag = n;
+}
+bool isProcess(int n) {
+  return (processflag == n);
 }
 
 void setError() {

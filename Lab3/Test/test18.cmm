@@ -1,0 +1,12 @@
+struct Temp{
+	int x;
+};
+
+int main(){
+	struct Temp t1;
+	struct Temp t2;
+	t1.x=2;
+	write(t1.x);
+	write(t2.x);
+	return 0;
+}

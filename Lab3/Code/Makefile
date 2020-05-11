@@ -35,6 +35,25 @@ syntax-c: $(YFILE)
 .PHONY: clean test
 test:
 	./parser ../Test/test.cmm
+testall:
+	./parser ../Test/test1.cmm ../Result/test1.ir
+	./parser ../Test/test2.cmm ../Result/test2.ir
+	./parser ../Test/test3.cmm ../Result/test3.ir
+	./parser ../Test/test4.cmm ../Result/test4.ir
+	./parser ../Test/test5.cmm ../Result/test5.ir
+	./parser ../Test/test6.cmm ../Result/test6.ir
+	./parser ../Test/test7.cmm ../Result/test7.ir
+	./parser ../Test/test8.cmm ../Result/test8.ir
+	./parser ../Test/test9.cmm ../Result/test9.ir
+	./parser ../Test/test10.cmm ../Result/test10.ir
+	./parser ../Test/test11.cmm ../Result/test11.ir
+	./parser ../Test/test12.cmm ../Result/test12.ir
+	./parser ../Test/test13.cmm ../Result/test13.ir
+	./parser ../Test/test14.cmm ../Result/test14.ir
+	./parser ../Test/test15.cmm ../Result/test15.ir
+	./parser ../Test/test16.cmm ../Result/test16.ir
+	./parser ../Test/test17.cmm ../Result/test17.ir
+	./parser ../Test/test18.cmm ../Result/test18.ir
 clean:
 	rm -f parser lex.yy.c syntax.tab.c syntax.tab.h syntax.output
 	rm -f $(OBJS) $(OBJS:.o=.d)

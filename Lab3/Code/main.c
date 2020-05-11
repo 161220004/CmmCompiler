@@ -6,6 +6,7 @@ extern int yyparse(void);
 extern void yyset_debug(int);
 extern void showDetail();
 extern void setLabFlag(int n);
+extern void setProcessFlag(int n);
 extern void printTree();
 extern void semanticAnalysis();
 extern void generateIR(char* fileName);
@@ -25,12 +26,16 @@ int main(int argc, char** argv)
   }
   yyrestart(f);
   yyparse();
+  setProcessFlag(1);
   printTree();
+  setProcessFlag(2);
   semanticAnalysis();
+  setProcessFlag(3);
   if (argc > 2) {
     generateIR(argv[2]);
   } else {
     generateIR(NULL);
   }
+  setProcessFlag(4);
   return 0;
 }

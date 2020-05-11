@@ -1,0 +1,14 @@
+struct Temp{
+	struct Tmp{
+		int x;
+	} tp1;
+};
+
+int main(){
+	struct Temp tmp1;
+	struct Temp tmp2;
+	tmp1.tp1.x=6;
+	write(tmp1.tp1.x);
+	write(tmp2.tp1.x);
+	return 0;
+}

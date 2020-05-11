@@ -432,6 +432,9 @@ Type* handleExp(Node* expNode) {
   } else if (childrenMatch(expNode, 1, TN_ID)) {
     Node* idNode = getCertainChild(expNode, 1);
     Type* idType = findTypeInAllVarList(idNode->cval, currentField);
+    if (isProcess(3)) {
+      idType = findTypeInAllVarList(idNode->cval, IRField);
+    }
     if (idNode->nextSibling == NULL) { // 返回ID对应的类型
       if (idType == NULL) { // 发现未定义变量，报错1
         reportError(1, idNode->lineno, idNode->cval, NULL);

@@ -14,6 +14,8 @@ extern int structSymListLen;
 extern FieldNode* globalField;
 /* 当前所在的作用域 */
 extern FieldNode* currentField;
+/** Lab3 唯一作用域 */
+extern FieldNode* IRField;
 
 void reportError(int errno, int lineno, char* val, char* addition);
 bool childrenMatch(Node* node, int n, NodeName expectName);
@@ -52,5 +54,6 @@ void printFunction(Function* func, bool toNewLine);
 void printSymList(int symListLen, SymElem* symList, bool toNewLine);
 void printFieldNode(FieldNode* field);
 void preAddFunctions();
+void createGlobalField(int varListLen, SymElem* varSymList);
 
 #endif

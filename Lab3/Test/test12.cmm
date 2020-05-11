@@ -1,0 +1,20 @@
+struct Temp{
+	int temp,tmp;
+};
+
+int func(struct Temp temp1){
+	temp1.temp=3;
+	return temp1.temp+2+4;
+}
+
+int main(){
+	int a;
+	int b;
+	struct Temp temp2;
+	a=func(temp2);
+	b=5;
+	b=2-a-b;
+	temp2.tmp=temp2.temp+b;
+	write(temp2.tmp);
+	return b;
+}

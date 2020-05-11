@@ -1,0 +1,14 @@
+struct Position
+{
+	int x,y;
+};
+
+int main()
+{
+	struct Position p;
+	p.y=p.x=p.y=3;
+	if(p.x==3)
+		write(0);
+	else
+		write(1);
+}

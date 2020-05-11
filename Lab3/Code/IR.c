@@ -15,6 +15,8 @@ void translateProgram() {
   interVarNum = getCertainNum(root, NTN_VARDEC);
   interVarList = (SymElem*)malloc(interVarNum * sizeof(SymElem));
   for (int i = 0; i < interVarNum; i++) { interVarList[i].isNull = true; }
+  // 创建全局作用域
+  createGlobalField(interVarNum, interVarList);
   // 开始逐层分析
   IRList = translateExtDefList(getCertainChild(root, 1), NULL);
 }

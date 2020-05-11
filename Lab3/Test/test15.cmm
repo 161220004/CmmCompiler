@@ -1,0 +1,18 @@
+struct Temp{
+	int x,y;
+};
+
+int func(struct Temp tmp){
+	return tmp.x*2+tmp.y/2;
+}
+
+int main(){
+	int b[2];
+	struct Temp t;
+	t.x=2;
+	t.y*t.x*2;
+	b[1]=t.y=func(t);
+	write(b[0]+b[1]+t.x+t.y);
+	write(10);
+	return t.y+t.x+b[1];
+}

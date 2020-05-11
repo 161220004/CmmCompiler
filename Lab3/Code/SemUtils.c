@@ -9,6 +9,9 @@ int structSymListLen = 0;
 /* 当前所在的作用域 */
 FieldNode* currentField = NULL;
 
+/** Lab3 唯一作用域 */
+FieldNode* IRField = NULL;
+
 /* 可检测的语义错误如下：
   1) 错误类型1： 变量在使用时未经定义
   2) 错误类型2： 函数在调用时未经定义
@@ -31,7 +34,7 @@ FieldNode* currentField = NULL;
   19) 错误类型19： 函数的多次声明互相冲突（即函数名一致，但返回类型、形参数量或者形参类型不一致），或者声明与定义之间互相冲突
 */
 void reportError(int errno, int lineno, char* val, char* addition) {
-  if (isLab(3)) setError();
+  if (isLab(3)) return;
   switch (errno) {
     case 1: fprintf(stderr, "Error type 1 at Line %d: Undefined variable \"%s\".", lineno, val); break;
     case 2: fprintf(stderr, "Error type 2 at Line %d: Undefined function \"%s\".", lineno, val); break;
@@ -570,4 +573,15 @@ void preAddFunctions() {
   Function* writeFunc = createFunction("write", 0, true, typeShallowCopy(intType), intTypeNode);
   addToFuncList(readFunc);
   addToFuncList(writeFunc);
+}
+
+/** 用于实验三，新建全局作用域，并置为IRField */
+void createGlobalField(int varListLen, SymElem* varSymList) {
+  FieldNode* field = (FieldNode*)malloc(sizeof(FieldNode));
+  field->type = F_GLOBAL;
+  field->parent = NULL;
+  field->func = NULL;
+  field->varListLen = varListLen;
+  field->varSymList = varSymList;
+  IRField = field;
 }

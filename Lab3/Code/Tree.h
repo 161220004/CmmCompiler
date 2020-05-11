@@ -56,6 +56,10 @@ char* getStrncpy(char* str);
 void setLabFlag(int n);
 bool isLab(int n);
 
+/** 当前处于哪一段过程 */
+void setProcessFlag(int n);
+bool isProcess(int n);
+
 /** 判定出现语法/词法错误 */
 void setError();
 bool isError();

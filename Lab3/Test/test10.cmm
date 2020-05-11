@@ -1,0 +1,12 @@
+int func(int a, int temp[2]){
+	a=a+temp[1];
+	return a;
+}
+
+int main(){
+	int b=2;
+	int add[2];
+	add[0]=add[1]=1;
+	write(func(b,add));
+	return 0;
+}
