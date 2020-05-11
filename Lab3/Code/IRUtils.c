@@ -284,6 +284,41 @@ bool varIsParam(char* name) {
   }
 }
 
+/** 检查一个Exp节点是否是纯ID */
+bool isPureID(Node* expNode) {
+  Node* idNode = getCertainChild(expNode, 1);
+  if (idNode->name == TN_ID && idNode->nextSibling == NULL) {
+    return true;
+  } else return false;
+}
+
+/** 获取纯ID的Exp节点的纯ID */
+char* getPureID(Node* expNode) {
+  return getCertainChild(expNode, 1)->cval;
+}
+
+/** 检查一个Exp节点是否是纯INT */
+bool isPureInt(Node* expNode) {
+  if (childrenMatch(expNode, 1, TN_INT)) return true;
+  else return false;
+}
+
+/** 获取纯INT的Exp节点的纯INT */
+int getPureInt(Node* expNode) {
+  return getCertainChild(expNode, 1)->ival;
+}
+
+/** 检查一个Exp节点是否是纯ARRAY/STRUCT */
+bool isPureArrayStruct(Node* expNode) {
+  Type* expType = handleExp(expNode);
+  if (expType->kind == T_ARRAY || expType->kind == T_STRUCT) {
+    if (isPureID(expNode)) return true;
+    else return false;
+  } else {
+    return false;
+  }
+}
+
 /** 从符号表获取变量 */
 Operand* lookUpVar(char* name) {
   int index = findInSymList(name, 0, interVarNum, interVarList);

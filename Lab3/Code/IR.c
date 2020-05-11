@@ -347,8 +347,16 @@ InterCode* translateExp(Node* expNode, Operand* place) {
       Node* expNode1 = getCertainChild(expNode, 1); // 左值
       Node* expNode2 = getCertainChild(expNode, 3); // 右值
       // 右侧的值赋给一个新的临时变量
-      Operand* rightOp = newTemp();
-      InterCode* rightCode = translateExp(expNode2, rightOp);
+      Operand* rightOp = NULL;
+      InterCode* rightCode = NULL;
+      if (isPureID(expNode2)) { // 右值是单个变量
+        rightOp = createOperand(OP_VAR, getPureID(expNode2));
+      } else if (isPureInt(expNode2)) { // 右值是int
+        rightOp = createConst(getPureInt(expNode2));
+      } else { // 都不是时才使用临时变量
+        rightOp = newTemp();
+        rightCode = translateExp(expNode2, rightOp);
+      }
       if (childrenMatch(expNode1, 1, TN_ID)) { // 左值是单个变量访问
         Operand* varOp = lookUpVar(getCertainChild(expNode1, 1)->cval);
         InterCode* assignCode = createInterCodeTwo(IR_ASSIGN, varOp, rightOp);
@@ -506,13 +514,10 @@ InterCode* translateStructAddr(Node* expNode, Operand* place) {
 /* Args: 检查实参列表，用于函数调用表达式，每个实参都可以变成一个表达式Exp；返回实参代码的头部 */
 InterCode* translateArgs(Node* argsNode, InterCode* tail, InterCode* argsCode) {
   Node* expNode = getCertainChild(argsNode, 1);
-  // 获取该实参的类型
-  Type* expType = handleExp(expNode);
   Operand* opVar = NULL;
   InterCode* newTail = tail;
   // ARG语句，注意如果实参类型是数组/结构体，传地址
-  if ((expType->kind == T_ARRAY || expType->kind == T_STRUCT) &&
-      childrenMatch(expNode, 1, TN_ID)) { // 数组/结构体，直接用
+  if (isPureArrayStruct(expNode)) { // 数组/结构体，直接用
     opVar = lookUpVar(getCertainChild(expNode, 1)->cval);
     opVar->kind = OP_ADDR;
   } else { // 非数组/结构体，先算表达式放到临时变量
