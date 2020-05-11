@@ -60,7 +60,7 @@ InterCode* translateStmt(Node* stmtNode);
 InterCode* translateCond(Node* expNode, InterCode* trueLab, InterCode* falseLab);
 InterCode* translateExp(Node* expNode, Operand* place);
 InterCode* translateArgs(Node* argsNode, InterCode* tail, InterCode* argsCode);
-InterCode* translateArrayAddr(Node* expNode, char* arrayName, Type* type, Operand* inhOp, Operand* place);
+InterCode* translateArrayAddr(Node* expNode, char* arrayName, bool isParam, Type* type, Operand* inhOp, Operand* place);
 InterCode* translateStructAddr(Node* expNode, Operand* place);
 
 #endif

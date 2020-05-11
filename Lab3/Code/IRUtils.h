@@ -29,6 +29,8 @@ char* getOpName(char* body, int num);
 bool isCondition(Node* expNode);
 bool isRelop(NodeName name);
 Relop getExpRelop(NodeName name);
+void setVarToParam(char* name);
+bool varIsParam(char* name);
 Operand* lookUpVar(char* name);
 Type* lookUpArrayType(char* name);
 Type* lookUpStructType(char* name);

@@ -14,7 +14,10 @@ void translateProgram() {
   // 初始化变量符号表
   interVarNum = getCertainNum(root, NTN_VARDEC);
   interVarList = (SymElem*)malloc(interVarNum * sizeof(SymElem));
-  for (int i = 0; i < interVarNum; i++) { interVarList[i].isNull = true; }
+  for (int i = 0; i < interVarNum; i++) {
+    interVarList[i].isNull = true;
+    interVarList[i].isParam = false;
+  }
   // 创建全局作用域
   createGlobalField(interVarNum, interVarList);
   // 开始逐层分析
@@ -79,6 +82,8 @@ InterCode* translateParamDec(Node* paramDecNode) {
   // 加入变量符号表
   TypeNode* paramTypeNode = handleParamDec(paramDecNode);
   addToVarList(paramTypeNode, interVarList, interVarNum);
+  // 设置为参数模式（因为数组/结构体参数，特别地，为地址）
+  setVarToParam(paramTypeNode->name);
   // 返回 PARAM 语句
   Node* varDecNode = getCertainChild(paramDecNode, 2);
   Operand* op = translateVarDec(varDecNode);
@@ -362,7 +367,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
         Type* arrayType = lookUpArrayType(arrayName);
         // 新的临时变量：取到数组“[]”内的字节处的地址
         Operand* addrOp = newTemp();
-        InterCode* getAddrCode = translateArrayAddr(expNode1, arrayName, arrayType, NULL, addrOp);
+        InterCode* getAddrCode = translateArrayAddr(expNode1, arrayName, varIsParam(arrayName), arrayType, NULL, addrOp);
         // 右值赋给数组内容
         Operand* getContOp = createOperand(OP_GETCONT, addrOp->name);
         InterCode* setContCode = createInterCodeTwo(IR_ASSIGN, getContOp, rightOp);
@@ -416,7 +421,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
       Type* arrayType = lookUpArrayType(arrayName);
       // 新的临时变量：取到数组“[]”内的字节处的地址
       Operand* addrOp = newTemp();
-      InterCode* getAddrCode = translateArrayAddr(expNode, arrayName, arrayType, NULL, addrOp);
+      InterCode* getAddrCode = translateArrayAddr(expNode, arrayName, varIsParam(arrayName), arrayType, NULL, addrOp);
       // 取到该地址内的值，放入place
       Operand* getContOp = createOperand(OP_GETCONT, addrOp->name);
       InterCode* getContCode = createInterCodeTwo(IR_ASSIGN, place, getContOp);
@@ -429,7 +434,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
 }
 
 /** Exp: 数组访问的位置代码，保证参数 Exp 是 Array */
-InterCode* translateArrayAddr(Node* expNode, char* arrayName, Type* type, Operand* inhOp, Operand* place) {
+InterCode* translateArrayAddr(Node* expNode, char* arrayName, bool isParam, Type* type, Operand* inhOp, Operand* place) {
   if (childrenMatch(expNode, 2, TN_LB)) { // 数组还有层数
     Node* arrayNode = getCertainChild(expNode, 1);
     // 先降级Type
@@ -454,12 +459,17 @@ InterCode* translateArrayAddr(Node* expNode, char* arrayName, Type* type, Operan
     if (childrenMatch(arrayNode, 1, TN_ID)) { // 最后一层
       // 取到当前累加的字节位置的地址，放入place
       Operand* addrOp = newTemp();
-      Operand* getAddrOp = createOperand(OP_GETADDR, arrayName);
+      Operand* getAddrOp = NULL;
+      if (isParam) { // 参数本身就是地址，不需要取址
+        getAddrOp = createOperand(OP_VAR, arrayName);
+      } else { // 变量需要额外取址
+        getAddrOp = createOperand(OP_GETADDR, arrayName);
+      }
       InterCode* getAddrCode = createInterCodeThree(IR_ADD, place, getAddrOp, nextInhOp);
       return linkInterCodeHeadToHead(arrayCode, getAddrCode);
     } else { // 还有好多层
       // 计算下一层的结果
-      InterCode* lowerCode = translateArrayAddr(arrayNode, arrayName, type, nextInhOp, place);
+      InterCode* lowerCode = translateArrayAddr(arrayNode, arrayName, isParam, type, nextInhOp, place);
       // 连接本层和下一层的代码
       return linkInterCodeHeadToHead(arrayCode, lowerCode);
     }
@@ -479,7 +489,12 @@ InterCode* translateStructAddr(Node* expNode, Operand* place) {
   Type* structType = lookUpStructType(structID->cval);
   int fieldPos = getFieldPosInStruct(getCertainChild(expNode, 3)->cval, structType);
   // 结构体域地址放入place
-  Operand* getAddrOp = createOperand(OP_GETADDR, structID->cval);
+  Operand* getAddrOp = NULL;
+  if (varIsParam(structID->cval)) { // 参数本身就是地址，不需要取址
+    getAddrOp = createOperand(OP_VAR, structID->cval);
+  } else { // 变量需要额外取址
+    getAddrOp = createOperand(OP_GETADDR, structID->cval);
+  }
   if (fieldPos == 0) {
     return createInterCodeTwo(IR_ASSIGN, place, getAddrOp);
   } else {
@@ -491,12 +506,21 @@ InterCode* translateStructAddr(Node* expNode, Operand* place) {
 /* Args: 检查实参列表，用于函数调用表达式，每个实参都可以变成一个表达式Exp；返回实参代码的头部 */
 InterCode* translateArgs(Node* argsNode, InterCode* tail, InterCode* argsCode) {
   Node* expNode = getCertainChild(argsNode, 1);
-  // 临时变量
-  Operand* opTmp = newTemp();
-  InterCode* expCode = translateExp(expNode, opTmp);
-  InterCode* newTail = addCodeToTail(expCode, tail);
-  // ARG语句连接上argsCode
-  argsCode = linkInterCodeHeadToHead(createInterCodeOne(IR_ARG, opTmp), argsCode);
+  // 获取该实参的类型
+  Type* expType = handleExp(expNode);
+  Operand* opVar = NULL;
+  InterCode* newTail = tail;
+  // ARG语句，注意如果实参类型是数组/结构体，传地址
+  if ((expType->kind == T_ARRAY || expType->kind == T_STRUCT) &&
+      childrenMatch(expNode, 1, TN_ID)) { // 数组/结构体，直接用
+    opVar = lookUpVar(getCertainChild(expNode, 1)->cval);
+    opVar->kind = OP_ADDR;
+  } else { // 非数组/结构体，先算表达式放到临时变量
+    opVar = newTemp();
+    newTail = addCodeToTail(translateExp(expNode, opVar), tail);
+  }
+  // 连接ARG语句链表
+  argsCode = linkInterCodeHeadToHead(createInterCodeOne(IR_ARG, opVar), argsCode);
   if (expNode->nextSibling == NULL) { // 最后一个
     return getInterCodeHead(newTail);
   } else { // 接下来还有

@@ -21,12 +21,14 @@ void printInterCode(FILE* file, InterCode* IRCode, bool toNewLine) {
     if (yyget_debug()) printf("NULL");
   } else if (IRCode->kind == IR_ASSIGN) {
     // 赋值
+    if (IRCode->two.op1 == NULL || IRCode->two.op2 == NULL) return;
     printOperand(IRCode->two.op1, file);
     fprintf(file, " := ");
     printOperand(IRCode->two.op2, file);
   } else if (IRCode->kind == IR_ADD || IRCode->kind == IR_SUB ||
              IRCode->kind == IR_MUL || IRCode->kind == IR_DIV) {
     // 加减乘除
+    if (IRCode->three.op1 == NULL || IRCode->three.op2 == NULL || IRCode->three.op3 == NULL) return;
     printOperand(IRCode->three.op1, file);
     fprintf(file," := ");
     printOperand(IRCode->three.op2, file);
@@ -41,17 +43,19 @@ void printInterCode(FILE* file, InterCode* IRCode, bool toNewLine) {
   } else if (IRCode->kind == IR_FUNCTION) {
     // Function
     fprintf(file, "FUNCTION %s :", IRCode->name);
-  } else if (IRCode->kind == IR_RETURN || IRCode->kind == IR_ARG || IRCode->kind == IR_PARAM ||
+  } else if (IRCode->kind == IR_RETURN || IRCode->kind == IR_PARAM ||
              IRCode->kind == IR_READ || IRCode->kind == IR_WRITE ) {
     // 关键字 + 变量名
+    if (IRCode->one.op == NULL) return;
     if (IRCode->kind == IR_RETURN) fprintf(file, "RETURN ");
-    else if (IRCode->kind == IR_ARG) {
-      if (IRCode->one.op == NULL) return;
-      fprintf(file, "ARG ");
-    }
     else if (IRCode->kind == IR_PARAM) fprintf(file, "PARAM ");
     else if (IRCode->kind == IR_READ) fprintf(file, "READ ");
     else if (IRCode->kind == IR_WRITE) fprintf(file, "WRITE ");
+    printOperand(IRCode->one.op, file);
+  } else if (IRCode->kind == IR_ARG) {
+    if (IRCode->one.op == NULL) return;
+    fprintf(file, "ARG ");
+    if (IRCode->one.op->kind == OP_ADDR) fprintf(file, "&");
     printOperand(IRCode->one.op, file);
   } else if (IRCode->kind == IR_CALL) {
     // Call 语句
@@ -77,6 +81,7 @@ void printInterCode(FILE* file, InterCode* IRCode, bool toNewLine) {
     fprintf(file, "GOTO %s", IRCode->name);
   } else if (IRCode->kind == IR_DEC) {
     // 开辟空间
+    if (IRCode->two.op1 == NULL || IRCode->two.op2 == NULL) return;
     fprintf(file, "DEC ");
     printOperand(IRCode->two.op1, file);
     fprintf(file, " %d", IRCode->two.op2->val);
@@ -255,6 +260,27 @@ Relop getExpRelop(NodeName name) {
     case TN_LT: return LT;
     case TN_GT: return GT;
     default: return EQ;
+  }
+}
+
+/** 把某变量设置成参数模式 */
+void setVarToParam(char* name) {
+  int index = findInSymList(name, 0, interVarNum, interVarList);
+  if (index < 0) { // 不应该这样
+    if (yyget_debug()) fprintf(stderr, "Error in Lab3, Undefined Var to Param: %s.\n", name);
+  } else {
+    interVarList[index].isParam = true;
+  }
+}
+
+/** 检查某变量是否是参数模式 */
+bool varIsParam(char* name) {
+  int index = findInSymList(name, 0, interVarNum, interVarList);
+  if (index < 0) { // 不应该这样
+    if (yyget_debug()) fprintf(stderr, "Error in Lab3, Undefined Var or Param: %s.\n", name);
+    return false;
+  } else {
+    return interVarList[index].isParam;
   }
 }
 

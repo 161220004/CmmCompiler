@@ -64,6 +64,7 @@ struct SymElem {
     Type* type; // 变量类型或结构体结构
     Function* func; // 函数信息
   };
+  bool isParam; // Lab3专用，由于数组/结构体的param自带“&”，使用不同的操作
 };
 
 void semanticAnalysis();

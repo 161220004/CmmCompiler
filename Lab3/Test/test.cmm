@@ -29,48 +29,48 @@
 //   return 0;
 // }
 
-// // 3
+// 3
 struct Operands
 {
   int o1;
   int o2;
 };
-int add3(struct Operands temp3)
+int add(struct Operands temp)
 {
-  return (temp3.o1 + temp3.o2);
+  return (temp.o1 + temp.o2);
 }
 int main()
 {
-  int n3;
-  struct Operands op3;
-  op3.o1 = 1;
-  op3.o2 = 2;
-  n3 = add3(op3);
-  write(n3);
+  int n;
+  struct Operands op;
+  op.o1 = 1;
+  op.o2 = 2;
+  n = add(op);
+  write(n);
   return 0;
 }
 
-// 4
-// int add4(int temp4[2])
+// // 4
+// int add(int temp[2])
 // {
-//   return (temp4[0] + temp4[1]);
+//   return (temp[0] + temp[1]);
 // }
 // int main()
 // {
-//   int op4[2];
-//   int r4[3][2];
-//   int i4 = 0, j4 = 0;
-//   while (i4 < 2)
+//   int op[2];
+//   int r[1][2];
+//   int i = 0, j = 0;
+//   while (i < 2)
 //   {
-//     while (j4 < 2)
+//     while (j < 2)
 //     {
-//       op4[j4] = i4 + j4;
-//       j4 = j4 + 1;
+//       op[j] = i + j;
+//       j = j + 1;
 //     }
-//     r4[0][i4] = add4(op4);
-//     write(r4[0][i4]);
-//     i4 = i4 + 1;
-//     j4 = 0;
+//     r[0][i] = add(op);
+//     write(r[0][i]);
+//     i = i + 1;
+//     j = 0;
 //   }
 //   return 0;
 // }
