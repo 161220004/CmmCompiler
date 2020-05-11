@@ -1,5 +1,5 @@
 // // 1
-// int main1()
+// int main()
 // {
 //   int n1;
 //   n1 = read();
@@ -17,7 +17,7 @@
 //   else
 //   return (n2 * fact(n2 - 1));
 // }
-// int main2()
+// int main()
 // {
 //   int m2, result2;
 //   m2 = read();
@@ -30,47 +30,47 @@
 // }
 
 // // 3
-// struct Operands
-// {
-//   int o1;
-//   int o2;
-// };
-// int add3(struct Operands temp3)
-// {
-//   return (temp3.o1 + temp3.o2);
-// }
-// int main3()
-// {
-//   int n3;
-//   struct Operands op3;
-//   op3.o1 = 1;
-//   op3.o2 = 2;
-//   n3 = add3(op3);
-//   write(n3);
-//   return 0;
-// }
-
-// 4
-int add4(int temp4[2])
+struct Operands
 {
-  return (temp4[0] + temp4[1]);
+  int o1;
+  int o2;
+};
+int add3(struct Operands temp3)
+{
+  return (temp3.o1 + temp3.o2);
 }
-int main4()
+int main()
 {
-  int op4[2];
-  int r4[3][2];
-  int i4 = 0, j4 = 0;
-  while (i4 < 2)
-  {
-    while (j4 < 2)
-    {
-      op4[j4] = i4 + j4;
-      j4 = j4 + 1;
-    }
-    r4[0][i4] = add4(op4);
-    write(r4[0][i4]);
-    i4 = i4 + 1;
-    j4 = 0;
-  }
+  int n3;
+  struct Operands op3;
+  op3.o1 = 1;
+  op3.o2 = 2;
+  n3 = add3(op3);
+  write(n3);
   return 0;
 }
+
+// 4
+// int add4(int temp4[2])
+// {
+//   return (temp4[0] + temp4[1]);
+// }
+// int main()
+// {
+//   int op4[2];
+//   int r4[3][2];
+//   int i4 = 0, j4 = 0;
+//   while (i4 < 2)
+//   {
+//     while (j4 < 2)
+//     {
+//       op4[j4] = i4 + j4;
+//       j4 = j4 + 1;
+//     }
+//     r4[0][i4] = add4(op4);
+//     write(r4[0][i4]);
+//     i4 = i4 + 1;
+//     j4 = 0;
+//   }
+//   return 0;
+// }

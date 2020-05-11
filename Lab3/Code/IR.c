@@ -170,7 +170,9 @@ InterCode* translateStmtList(Node* stmtListNode, InterCode* tail) {
 /* Stmt: 检查一条语句，返回一条语句中间代码的头部 */
 InterCode* translateStmt(Node* stmtNode) {
   if (childrenMatch(stmtNode, 1, NTN_EXP)) { // 普通语句
-    return translateExp(getCertainChild(stmtNode, 1), NULL);
+    // 结果存为临时变量
+    Operand* opTmp = newTemp();
+    return translateExp(getCertainChild(stmtNode, 1), opTmp);
   } else if (childrenMatch(stmtNode, 1, NTN_COMPST)) { // 新的语句块
     return translateCompSt(getCertainChild(stmtNode, 1));
   } else if (childrenMatch(stmtNode, 1, TN_RETURN)) { // RETURN语句
@@ -360,7 +362,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
         Type* arrayType = lookUpArrayType(arrayName);
         // 新的临时变量：取到数组“[]”内的字节处的地址
         Operand* addrOp = newTemp();
-        InterCode* getAddrCode = translateArrayAddr(expNode, arrayName, arrayType, NULL, addrOp);
+        InterCode* getAddrCode = translateArrayAddr(expNode1, arrayName, arrayType, NULL, addrOp);
         // 右值赋给数组内容
         Operand* getContOp = createOperand(OP_GETCONT, addrOp->name);
         InterCode* setContCode = createInterCodeTwo(IR_ASSIGN, getContOp, rightOp);
@@ -370,7 +372,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
       } else if (childrenMatch(expNode1, 2, TN_DOT)) { // 左值是结构体特定域的访问
         // 新的临时变量：取到结构体访问的字节处的地址
         Operand* addrOp = newTemp();
-        InterCode* getAddrCode = translateStructAddr(expNode, addrOp);
+        InterCode* getAddrCode = translateStructAddr(expNode1, addrOp);
         Operand* getContOp = createOperand(OP_GETCONT, addrOp->name);
         InterCode* setContCode = createInterCodeTwo(IR_ASSIGN, getContOp, rightOp);
         // 连接：rightCode + getAddrCode + setContCode

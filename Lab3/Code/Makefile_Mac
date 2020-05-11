@@ -35,6 +35,8 @@ syntax-c: $(YFILE)
 .PHONY: clean test test1 test2
 test:
 	./parser ../Test/test.cmm
+test13:
+	./parser ../Test/test13.cmm
 testall:
 	./parser ../Test/test1.cmm ../Result/test1.ir
 	./parser ../Test/test2.cmm ../Result/test2.ir
