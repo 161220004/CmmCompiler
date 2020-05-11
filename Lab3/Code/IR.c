@@ -22,7 +22,7 @@ void translateProgram() {
   createGlobalField(interVarNum, interVarList);
   // 开始逐层分析
   IRList = translateExtDefList(getCertainChild(root, 1), NULL);
-  
+
   if (yyget_debug()) printIRVarList();
 }
 
@@ -177,9 +177,7 @@ InterCode* translateStmtList(Node* stmtListNode, InterCode* tail) {
 /* Stmt: 检查一条语句，返回一条语句中间代码的头部 */
 InterCode* translateStmt(Node* stmtNode) {
   if (childrenMatch(stmtNode, 1, NTN_EXP)) { // 普通语句
-    // 结果存为临时变量
-    Operand* opTmp = newTemp();
-    return translateExp(getCertainChild(stmtNode, 1), opTmp);
+    return translateExp(getCertainChild(stmtNode, 1), NULL);
   } else if (childrenMatch(stmtNode, 1, NTN_COMPST)) { // 新的语句块
     return translateCompSt(getCertainChild(stmtNode, 1));
   } else if (childrenMatch(stmtNode, 1, TN_RETURN)) { // RETURN语句
@@ -381,8 +379,12 @@ InterCode* translateExp(Node* expNode, Operand* place) {
         // 右值赋给数组内容
         Operand* getContOp = createOperand(OP_GETCONT, addrOp->name);
         InterCode* setContCode = createInterCodeTwo(IR_ASSIGN, getContOp, rightOp);
-        // 连接：rightCode + getAddrCode + setContCode
+        // 连接：rightCode + getAddrCode + setContCode ( + placeCode)
         InterCode* code = linkInterCodeHeadToHead(getAddrCode, setContCode);
+        if (place != NULL) {
+          InterCode* placeCode = createInterCodeTwo(IR_ASSIGN, place, rightOp);
+          code = linkInterCodeHeadToHead(code, placeCode);
+        }
         return linkInterCodeHeadToHead(rightCode, code);
       } else if (childrenMatch(expNode1, 2, TN_DOT)) { // 左值是结构体特定域的访问
         // 新的临时变量：取到结构体访问的字节处的地址
@@ -390,8 +392,12 @@ InterCode* translateExp(Node* expNode, Operand* place) {
         InterCode* getAddrCode = translateStructAddr(expNode1, addrOp);
         Operand* getContOp = createOperand(OP_GETCONT, addrOp->name);
         InterCode* setContCode = createInterCodeTwo(IR_ASSIGN, getContOp, rightOp);
-        // 连接：rightCode + getAddrCode + setContCode
+        // 连接：rightCode + getAddrCode + setContCode ( + placeCode)
         InterCode* code = linkInterCodeHeadToHead(getAddrCode, setContCode);
+        if (place != NULL) {
+          InterCode* placeCode = createInterCodeTwo(IR_ASSIGN, place, rightOp);
+          code = linkInterCodeHeadToHead(code, placeCode);
+        }
         return linkInterCodeHeadToHead(rightCode, code);
       } else {
         if (yyget_debug()) fprintf(stderr, "Not Support This as Left Value in Assign.");

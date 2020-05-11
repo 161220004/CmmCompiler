@@ -59,6 +59,7 @@ void printInterCode(FILE* file, InterCode* IRCode, bool toNewLine) {
     printOperand(IRCode->one.op, file);
   } else if (IRCode->kind == IR_CALL) {
     // Call 语句
+    if (IRCode->call.op == NULL) return;
     printOperand(IRCode->call.op, file);
     fprintf(file, " := CALL ");
     fprintf(file, "%s", IRCode->call.funcName);

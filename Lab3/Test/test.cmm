@@ -9,25 +9,25 @@
 //   return 0;
 // }
 
-// 2
-int fact(int n2)
-{
-  if (n2 == 1)
-  return n2;
-  else
-  return (n2 * fact(n2 - 1));
-}
-int main()
-{
-  int m2, result2;
-  m2 = read();
-  if (m2 > 1)
-  result2 = fact(m2);
-  else
-  result2 = 1;
-  write(result2);
-  return 0;
-}
+// // 2
+// int fact(int n2)
+// {
+//   if (n2 == 1)
+//   return n2;
+//   else
+//   return (n2 * fact(n2 - 1));
+// }
+// int main()
+// {
+//   int m2, result2;
+//   m2 = read();
+//   if (m2 > 1)
+//   result2 = fact(m2);
+//   else
+//   result2 = 1;
+//   write(result2);
+//   return 0;
+// }
 
 // 3
 // struct Operands
@@ -74,3 +74,10 @@ int main()
 //   }
 //   return 0;
 // }
+
+// 13
+int main(){
+	int array[3];
+	array[0]=array[1]=array[2]=2;
+	return 0;
+}
