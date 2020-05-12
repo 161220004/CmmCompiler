@@ -153,11 +153,19 @@ InterCode* translateDec(Node* decNode, Type* defType) {
   }
   InterCode* expCode = NULL;
   if (varDecNode->nextSibling != NULL) { // 有初始化语句
-    // 创建临时变量以获取表达式的值
-    Operand* opTmp = newTemp();
-    expCode = translateExp(getCertainChild(decNode, 3), opTmp); // 已经包含代码：表达式的值赋值给该变量
+    Node* expNode2 = getCertainChild(decNode, 3);
+    // 右侧的值赋给一个新的临时变量
+    Operand* rightOp = NULL;
+    if (isPureID(expNode2)) { // 右值是单个变量
+      rightOp = createOperand(OP_VAR, getPureID(expNode2));
+    } else if (isPureInt(expNode2)) { // 右值是int
+      rightOp = createConst(getPureInt(expNode2));
+    } else { // 都不是时才使用临时变量
+      rightOp = newTemp();
+      expCode = translateExp(expNode2, rightOp);
+    }
     Operand* varOp = createOperand(OP_VAR, decTypeNode->name);
-    InterCode* assignCode = createInterCodeTwo(IR_ASSIGN, varOp, opTmp);
+    InterCode* assignCode = createInterCodeTwo(IR_ASSIGN, varOp, rightOp);
     expCode = linkInterCodeHeadToHead(expCode, assignCode);
   }
   return linkInterCodeHeadToHead(decCode, expCode);
