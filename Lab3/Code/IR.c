@@ -185,7 +185,13 @@ InterCode* translateStmtList(Node* stmtListNode, InterCode* tail) {
 /* Stmt: 检查一条语句，返回一条语句中间代码的头部 */
 InterCode* translateStmt(Node* stmtNode) {
   if (childrenMatch(stmtNode, 1, NTN_EXP)) { // 普通语句
-    return translateExp(getCertainChild(stmtNode, 1), NULL);
+    Node* expNode = getCertainChild(stmtNode, 1);
+    if (childrenMatch(expNode, 2, TN_LP)) { //函数调用
+      Operand* resOp = newTemp();
+      return translateExp(expNode, resOp);
+    } else {
+      return translateExp(expNode, NULL);
+    }
   } else if (childrenMatch(stmtNode, 1, NTN_COMPST)) { // 新的语句块
     return translateCompSt(getCertainChild(stmtNode, 1));
   } else if (childrenMatch(stmtNode, 1, TN_RETURN)) { // RETURN语句
