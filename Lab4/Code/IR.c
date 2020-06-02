@@ -334,6 +334,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
         }
         argsCode = getInterCodeHead(argsCode);
         if (strcmp(funcOp->name, "write") == 0) {
+          hasWrite = true;
           return linkInterCodeHeadToHead(argsExpCode, createInterCodeOne(IR_WRITE, argsCode->one.op));
         } else {
           argsCode = linkInterCodeHeadToHead(argsExpCode, argsCode);
@@ -342,6 +343,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
         }
       } else { // 无参数
         if (strcmp(funcOp->name, "read") == 0) {
+          hasRead = true;
           return createInterCodeOne(IR_READ, place);
         } else {
           return createInterCodeCall(IR_CALL, place, funcOp->name);

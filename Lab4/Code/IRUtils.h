@@ -16,6 +16,10 @@ extern int paramCount;
 extern int tempCount;
 /** Label个数 */
 extern int labelCount;
+/* 是否调用了read函数 */
+extern bool hasRead;
+/* 是否调用了write函数 */
+extern bool hasWrite;
 
 void printInterCode(FILE* file, InterCode* IRCode, bool toNewLine);
 void printInterCodes(char* fileName);

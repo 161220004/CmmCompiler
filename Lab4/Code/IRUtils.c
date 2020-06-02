@@ -15,6 +15,11 @@ int tempCount = 0;
 /* Label个数 */
 int labelCount = 0;
 
+/* 是否调用了read函数 */
+bool hasRead = false;
+/* 是否调用了write函数 */
+bool hasWrite = false;
+
 /** 打印一条中间代码 */
 void printInterCode(FILE* file, InterCode* IRCode, bool toNewLine) {
   if (IRCode == NULL) {
