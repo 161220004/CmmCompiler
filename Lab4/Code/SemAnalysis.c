@@ -63,11 +63,11 @@ void handleProgram() {
   Node* extDefListNode = getCertainChild(root, 1);
   // 创建全局函数表
   int preAddFuncNum = 0;
-  if (isLab(3)) preAddFuncNum = 2;
+  if (isLab(3) || isLab(4)) preAddFuncNum = 2;
   funcSymListLen = getRoughFuncNum(extDefListNode) + preAddFuncNum;
   funcSymList = (SymElem*)malloc(funcSymListLen * sizeof(SymElem));
   for (int i = 0; i < funcSymListLen; i++) { funcSymList[i].isNull = true; }
-  if (isLab(3)) preAddFunctions();
+  if (isLab(3) || isLab(4)) preAddFunctions();
   // 创建全局结构体表
   structSymListLen = getRoughStructNum(extDefListNode);
   structSymList = (SymElem*)malloc(structSymListLen * sizeof(SymElem));

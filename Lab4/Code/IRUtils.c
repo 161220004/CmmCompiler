@@ -23,7 +23,7 @@ bool hasWrite = false;
 /** 打印一条中间代码 */
 void printInterCode(FILE* file, InterCode* IRCode, bool toNewLine) {
   if (IRCode == NULL) {
-    if (yyget_debug()) printf("NULL");
+    if (yyget_debug() && isLab(3)) printf("NULL");
   } else if (IRCode->kind == IR_ASSIGN) {
     // 赋值
     if (IRCode->two.op1 == NULL || IRCode->two.op2 == NULL) return;
@@ -207,7 +207,7 @@ InterCode* addCodeToTail(InterCode* newCode, InterCode* tail) {
   if (afterTail != NULL) {
     afterTail->prev = newCodeTail;
   }
-  if (yyget_debug()) {
+  if (yyget_debug() && isLab(3)) {
     printf("Add Code to Tail: ");
     printInterCode(stdout, newCode, false);
     if (newCode != newCodeTail) {
@@ -273,18 +273,18 @@ Relop getExpRelop(NodeName name) {
 void setVarToParam(char* name) {
   int index = findInSymList(name, 0, interVarNum, interVarList);
   if (index < 0) { // 不应该这样
-    if (yyget_debug()) fprintf(stderr, "Error in Lab3, Undefined Var to Param: %s.\n", name);
+    if (yyget_debug() && isLab(3)) fprintf(stderr, "Error in Lab3, Undefined Var to Param: %s.\n", name);
   } else {
     interVarList[index].isParam = true;
   }
-  if (yyget_debug()) printf("Set \"%s\" to Param\n", name);
+  if (yyget_debug() && isLab(3)) printf("Set \"%s\" to Param\n", name);
 }
 
 /** 检查某变量是否是参数模式 */
 bool varIsParam(char* name) {
   int index = findInSymList(name, 0, interVarNum, interVarList);
   if (index < 0) { // 不应该这样
-    if (yyget_debug()) fprintf(stderr, "Error in Lab3, Undefined Var or Param: %s.\n", name);
+    if (yyget_debug() && isLab(3)) fprintf(stderr, "Error in Lab3, Undefined Var or Param: %s.\n", name);
     return false;
   } else {
     return interVarList[index].isParam;
@@ -330,7 +330,7 @@ bool isPureArrayStruct(Node* expNode) {
 Operand* lookUpVar(char* name) {
   int index = findInSymList(name, 0, interVarNum, interVarList);
   if (index < 0) { // 不应该这样
-    if (yyget_debug()) fprintf(stderr, "Error in Lab3, Undefined Var: %s.\n", name);
+    if (yyget_debug() && isLab(3)) fprintf(stderr, "Error in Lab3, Undefined Var: %s.\n", name);
     return NULL;
   } else {
     return createOperand(OP_VAR, name);
@@ -341,7 +341,7 @@ Operand* lookUpVar(char* name) {
 Type* lookUpArrayType(char* name) {
   int index = findInSymList(name, 0, interVarNum, interVarList);
   if (index < 0) { // 不应该这样
-    if (yyget_debug()) fprintf(stderr, "Error in Lab3, Undefined Var: %s.\n", name);
+    if (yyget_debug() && isLab(3)) fprintf(stderr, "Error in Lab3, Undefined Var: %s.\n", name);
     return NULL;
   } else {
     return interVarList[index].type;
@@ -352,7 +352,7 @@ Type* lookUpArrayType(char* name) {
 Type* lookUpStructType(char* name) {
   int index = findInSymList(name, 0, interVarNum, interVarList);
   if (index < 0) { // 不应该这样
-    if (yyget_debug()) fprintf(stderr, "Error in Lab3, Undefined Structure Var: %s.\n", name);
+    if (yyget_debug() && isLab(3)) fprintf(stderr, "Error in Lab3, Undefined Structure Var: %s.\n", name);
     return NULL;
   } else {
     return interVarList[index].type;
@@ -363,7 +363,7 @@ Type* lookUpStructType(char* name) {
 Operand* lookUpFunc(char* name) {
   int index = findInSymList(name, 0, funcSymListLen, funcSymList);
   if (index < 0) { // 不应该这样
-    if (yyget_debug()) fprintf(stderr, "Error in Lab3, Undefined Function: %s.\n", name);
+    if (yyget_debug() && isLab(3)) fprintf(stderr, "Error in Lab3, Undefined Function: %s.\n", name);
     return NULL;
   } else {
     return createOperand(OP_VAR, name);
@@ -505,7 +505,7 @@ int getFieldPosInStruct(char* name, Type* type) {
     }
     return sum;
   } else {
-    if (yyget_debug()) fprintf(stderr, "Var to Calculate Must be Structure\n");
+    if (yyget_debug() && isLab(3)) fprintf(stderr, "Var to Calculate Must be Structure\n");
     return 0;
   }
 }

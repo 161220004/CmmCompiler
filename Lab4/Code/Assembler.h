@@ -47,6 +47,7 @@ int ensure(Operand* op, InterCode* current);
 int allocate(Operand* op, InterCode* current);
 int spillFarthestReg(InterCode* current);
 void spillFromReg(RegName reg);
+void spillAllRegs();
 void fillReg(RegName reg, bool isConst, char* var, int val);
 bool isBlockHead(InterCode* code);
 int IndexInRegs(Operand* op);

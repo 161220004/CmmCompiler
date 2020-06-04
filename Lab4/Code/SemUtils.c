@@ -568,7 +568,7 @@ void printFieldNode(FieldNode* field) {
   printf("}\n");
 }
 
-/** 用于实验三，预添加两个函数 int read() 和 int write(int) */
+/** 用于实验三/四，预添加两个函数 int read() 和 int write(int) */
 void preAddFunctions() {
   Type* intType = createBasicType(T_INT);
   Function* readFunc = createFunction("read", 0, true, typeShallowCopy(intType), NULL);
@@ -578,7 +578,7 @@ void preAddFunctions() {
   addToFuncList(writeFunc);
 }
 
-/** 用于实验三，新建全局作用域，并置为IRField */
+/** 用于实验三/四，新建全局作用域，并置为IRField */
 void createGlobalField(int varListLen, SymElem* varSymList) {
   FieldNode* field = (FieldNode*)malloc(sizeof(FieldNode));
   field->type = F_GLOBAL;

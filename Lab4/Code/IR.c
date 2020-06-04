@@ -24,7 +24,7 @@ void translateProgram() {
   // 开始逐层分析
   IRList = translateExtDefList(getCertainChild(root, 1), NULL);
 
-  if (yyget_debug()) printIRVarList();
+  if (yyget_debug() && isLab(3)) printIRVarList();
 }
 
 /* ExtDefList: 检查一系列全局变量、结构体或函数的定义 */
@@ -326,8 +326,8 @@ InterCode* translateExp(Node* expNode, Operand* place) {
         // 此刻argsCode依然指向尾部的空节点，我们把空节点删除，然后把它指向头节点
         InterCode* argsCodeDel = argsCode;
         argsCode = argsCodeDel->prev;
-        if (argsCode == NULL && yyget_debug()) {
-          fprintf(stderr, "Failed to Receive Args.\n");
+        if (argsCode == NULL) {
+          if (yyget_debug() && isLab(3)) fprintf(stderr, "Failed to Receive Args.\n");
         } else {
           argsCodeDel->prev = NULL;
           argsCode->next = NULL;
@@ -385,7 +385,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
       } else if (childrenMatch(expNode1, 2, TN_LB)) { // 左值是数组元素访问
         char* arrayName = getArrayName(expNode1);
         if (arrayName == NULL) {
-          if (yyget_debug()) fprintf(stderr, "Array Name is Not Valid.\n");
+          if (yyget_debug() && isLab(3)) fprintf(stderr, "Array Name is Not Valid.\n");
           return rightCode;
         }
         // 查符号表，得到数组类型
@@ -417,7 +417,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
         }
         return linkInterCodeHeadToHead(rightCode, code);
       } else {
-        if (yyget_debug()) fprintf(stderr, "Not Support This as Left Value in Assign.");
+        if (yyget_debug() && isLab(3)) fprintf(stderr, "Not Support This as Left Value in Assign.");
         return rightCode;
       }
     } else if (opNode->name == TN_PLUS || opNode->name == TN_MINUS ||
@@ -447,7 +447,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
     } else if (opNode->name == TN_LB) {  // 数组访问
       char* arrayName = getArrayName(expNode);
       if (arrayName == NULL) {
-        if (yyget_debug()) fprintf(stderr, "Array Name is Not Valid.\n");
+        if (yyget_debug() && isLab(3)) fprintf(stderr, "Array Name is Not Valid.\n");
         return NULL;
       }
       // 查符号表，得到数组类型
@@ -460,7 +460,7 @@ InterCode* translateExp(Node* expNode, Operand* place) {
       InterCode* getContCode = createInterCodeTwo(IR_ASSIGN, place, getContOp);
       return linkInterCodeHeadToHead(getAddrCode, getContCode);
     } else {
-      if (yyget_debug()) fprintf(stderr, "Should Not Enter Here.\n");
+      if (yyget_debug() && isLab(3)) fprintf(stderr, "Should Not Enter Here.\n");
       return NULL;
     }
   }
@@ -507,7 +507,7 @@ InterCode* translateArrayAddr(Node* expNode, char* arrayName, Type* type, Operan
       return linkInterCodeHeadToHead(arrayCode, lowerCode);
     }
   } else {
-    if (yyget_debug()) fprintf(stderr, "Only Translate Array Here.\n");
+    if (yyget_debug() && isLab(3)) fprintf(stderr, "Only Translate Array Here.\n");
     return NULL;
   }
 }
@@ -516,7 +516,7 @@ InterCode* translateArrayAddr(Node* expNode, char* arrayName, Type* type, Operan
 InterCode* translateStructAddr(Node* expNode, Operand* place) {
   Node* structID = getCertainChild(getCertainChild(expNode, 1), 1);
   if (structID->name != TN_ID || structID->nextSibling != NULL) {
-    if (yyget_debug()) fprintf(stderr, "Structure to Access is Not Valid.\n");
+    if (yyget_debug() && isLab(3)) fprintf(stderr, "Structure to Access is Not Valid.\n");
     return NULL;
   }
   Type* structType = lookUpStructType(structID->cval);
