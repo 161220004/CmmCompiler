@@ -41,11 +41,11 @@ void generateMIPS(char* fileName) {
   while (IRCode != NULL) {
     if (IRCode->kind == IR_LABEL) {
       spillAllRegs();
-      if (yyget_debug()) fprintf(MIPSFile, "    # Block finished before LABEL\n");
+      if (yyget_debug()) fprintf(MIPSFile, "    # spill all after LABEL (start of Block)\n");
       fprintf(MIPSFile, "%s:\n", IRCode->name);
     } else if (IRCode->kind == IR_GOTO) {
       spillAllRegs();
-      if (yyget_debug()) fprintf(MIPSFile, "    # Block finished before GOTO\n");
+      if (yyget_debug()) fprintf(MIPSFile, "    # spill all before GOTO (end of block)\n");
       fprintf(MIPSFile, "  j %s\n", IRCode->name);
     } else if (IRCode->kind == IR_READ) {
       if (yyget_debug()) fprintf(MIPSFile, "    # read %s start\n", IRCode->one.op->name);
@@ -123,6 +123,7 @@ void generateMIPS(char* fileName) {
       }
       // 再保存所有寄存器的值
       spillAllRegs();
+      if (yyget_debug()) fprintf(MIPSFile, "    # spill all before CALL\n");
       // 开始调用函数
       fprintf(MIPSFile, "  addi $sp, $sp, -4\n");
 			fprintf(MIPSFile, "  sw $ra, 0($sp)\n");
@@ -135,7 +136,8 @@ void generateMIPS(char* fileName) {
       int returnIndex = ensure(IRCode->call.op, IRCode);
 			fprintf(MIPSFile, "  move %s, $v0\n", regs[returnIndex].str);
     } else if (IRCode->kind == IR_IF) {
-      if (yyget_debug()) fprintf(MIPSFile, "    # if start\n");
+      spillFarthestReg(IRCode);
+      if (yyget_debug()) fprintf(MIPSFile, "    # spill all before GOTO except IF relop\n");
       int leftIndex = ensure(IRCode->ifcode.op1, IRCode);
       int rightIndex = ensure(IRCode->ifcode.op2, IRCode);
       switch (IRCode->ifcode.relop) {
@@ -256,6 +258,8 @@ int spillFarthestReg(InterCode* current) {
   for (int i = R_T0; i < R_S0; i++) { regs[i].useBit = 0; }
   int useNo = 0; // 使用顺序
   for (int i = R_T0; i < R_S0; i++) {
+    if (regs[i].isEmpty) continue;
+    else if (regs[i].isConst) continue;
     InterCode* code = current;
     while (code != NULL && !isBlockHead(code) && code->kind != IR_FUNCTION) { // 还在基本块内（没进入下一个基本块）
       if (code->kind == IR_READ || code->kind == IR_WRITE || code->kind == IR_ARG || code->kind == IR_RETURN) {
@@ -332,6 +336,7 @@ int spillFarthestReg(InterCode* current) {
 
 /* 清空一个寄存器，溢出到内存 */
 void spillFromReg(RegName reg) {
+  if (regs[reg].isEmpty) return;
   if (regs[reg].isConst) { // 常数，直接清空
     regs[reg].isEmpty = true;
     if (yyget_debug()) fprintf(MIPSFile, "    # spill: const %d from Reg[%s]\n", regs[reg].val, regs[reg].str);
@@ -364,7 +369,7 @@ void spillAllRegs() {
   }
   for (int i = R_T0; i < R_S0; i++) {
     regs[i].useBit = 0;
-    if (!regs[i].isEmpty) spillFromReg(i);
+    spillFromReg(i);
   }
 }
 
