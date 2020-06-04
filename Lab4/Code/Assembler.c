@@ -39,14 +39,34 @@ void generateMIPS(char* fileName) {
   if (hasWrite) generateWrite();
   InterCode* IRCode = IRList;
   while (IRCode != NULL) {
-    if (isBlockHead(IRCode)) { // 当前为一个新的基本块的开头，则对于旧的基本块溢出全部寄存器到内存
-      spillAllRegs();
-      if (yyget_debug()) fprintf(MIPSFile, "    # Block finished\n");
-    }
     if (IRCode->kind == IR_LABEL) {
+      spillAllRegs();
+      if (yyget_debug()) fprintf(MIPSFile, "    # Block finished before LABEL\n");
       fprintf(MIPSFile, "%s:\n", IRCode->name);
     } else if (IRCode->kind == IR_GOTO) {
+      spillAllRegs();
+      if (yyget_debug()) fprintf(MIPSFile, "    # Block finished before GOTO\n");
       fprintf(MIPSFile, "  j %s\n", IRCode->name);
+    } else if (IRCode->kind == IR_READ) {
+      if (yyget_debug()) fprintf(MIPSFile, "    # read %s start\n", IRCode->one.op->name);
+			fprintf(MIPSFile, "  addi $sp, $sp, -4\n");
+			fprintf(MIPSFile, "  sw $ra, 0($sp)\n");
+			fprintf(MIPSFile, "  jal read\n");
+			fprintf(MIPSFile, "  lw $ra, 0($sp)\n");
+			fprintf(MIPSFile, "  addi $sp, $sp, 4\n");
+      int readIndex = ensure(IRCode->one.op, IRCode);
+			fprintf(MIPSFile, "  move %s, $v0\n", regs[readIndex].str);
+      if (yyget_debug()) fprintf(MIPSFile, "    # read %s to Reg[%s] finished\n", IRCode->one.op->name, regs[readIndex].str);
+    } else if (IRCode->kind == IR_WRITE) {
+      if (yyget_debug()) fprintf(MIPSFile, "    # write %s start\n", IRCode->one.op->name);
+      int writeIndex = IndexInRegs(IRCode->one.op);
+      fprintf(MIPSFile, "  move $a0, %s\n", regs[writeIndex].str);
+			fprintf(MIPSFile, "  addi $sp, $sp, -4\n");
+			fprintf(MIPSFile, "  sw $ra, 0($sp)\n");
+			fprintf(MIPSFile, "  jal write\n");
+			fprintf(MIPSFile, "  lw $ra, 0($sp)\n");
+			fprintf(MIPSFile, "  addi $sp, $sp, 4\n");
+      if (yyget_debug()) fprintf(MIPSFile, "    # write %s from Reg[%s] finished\n", IRCode->one.op->name, regs[writeIndex].str);
     } else if (IRCode->kind == IR_FUNCTION) {
       fprintf(MIPSFile, "%s:\n", IRCode->name);
       if (strcmp(IRCode->name, "main") == 0) { // main函数
@@ -70,26 +90,6 @@ void generateMIPS(char* fileName) {
         if (IRCode->one.op->kind == OP_CONST) fprintf(MIPSFile, "    # return %d finished\n", IRCode->one.op->val);
         else fprintf(MIPSFile, "    # return %s finished\n", IRCode->one.op->name);
       }
-    } else if (IRCode->kind == IR_READ) {
-      if (yyget_debug()) fprintf(MIPSFile, "    # read %s start\n", IRCode->one.op->name);
-			fprintf(MIPSFile, "  addi $sp, $sp, -4\n");
-			fprintf(MIPSFile, "  sw $ra, 0($sp)\n");
-			fprintf(MIPSFile, "  jal read\n");
-			fprintf(MIPSFile, "  lw $ra, 0($sp)\n");
-			fprintf(MIPSFile, "  addi $sp, $sp, 4\n");
-      int readIndex = ensure(IRCode->one.op, IRCode);
-			fprintf(MIPSFile, "  move %s, $v0\n", regs[readIndex].str);
-      if (yyget_debug()) fprintf(MIPSFile, "    # read %s to Reg[%s] finished\n", IRCode->one.op->name, regs[readIndex].str);
-    } else if (IRCode->kind == IR_WRITE) {
-      if (yyget_debug()) fprintf(MIPSFile, "    # write %s start\n", IRCode->one.op->name);
-      int writeIndex = IndexInRegs(IRCode->one.op);
-      fprintf(MIPSFile, "  move $a0, %s\n", regs[writeIndex].str);
-			fprintf(MIPSFile, "  addi $sp, $sp, -4\n");
-			fprintf(MIPSFile, "  sw $ra, 0($sp)\n");
-			fprintf(MIPSFile, "  jal write\n");
-			fprintf(MIPSFile, "  lw $ra, 0($sp)\n");
-			fprintf(MIPSFile, "  addi $sp, $sp, 4\n");
-      if (yyget_debug()) fprintf(MIPSFile, "    # write %s from Reg[%s] finished\n", IRCode->one.op->name, regs[writeIndex].str);
     } else if (IRCode->kind == IR_PARAM) {
       int paramNum = 0;
       while (IRCode != NULL && IRCode->kind == IR_PARAM) {
@@ -98,13 +98,14 @@ void generateMIPS(char* fileName) {
         if (paramNum < 4) { // 从寄存器$a0等中加载
           fprintf(MIPSFile, "  move %s, $a%d\n", regs[paramIndex].str, paramNum);
         } else { // 从之前的栈中加载
-          fprintf(MIPSFile, "  lw %s, %d($fp)\n", regs[paramIndex].str, 4 * (paramNum - 3));
+          fprintf(MIPSFile, "  lw %s, %d($fp)\n", regs[paramIndex].str, 4/*ra*/ + 4 * (paramNum - 3));
         }
         paramNum += 1;
         IRCode = IRCode->next;
       }
       IRCode = IRCode->prev; // 保证当前是最后一个PARAM
     } else if (IRCode->kind == IR_CALL) {
+      // 先加载实参值到寄存器 $a_
       int argNum = 0;
       InterCode* argCode = IRCode->prev;
       while (argCode != NULL && argCode->kind == IR_ARG) {
@@ -120,6 +121,9 @@ void generateMIPS(char* fileName) {
         argNum += 1;
         argCode = argCode->prev;
       }
+      // 再保存所有寄存器的值
+      spillAllRegs();
+      // 开始调用函数
       fprintf(MIPSFile, "  addi $sp, $sp, -4\n");
 			fprintf(MIPSFile, "  sw $ra, 0($sp)\n");
 			fprintf(MIPSFile, "  jal %s\n", IRCode->call.funcName);
@@ -253,8 +257,8 @@ int spillFarthestReg(InterCode* current) {
   int useNo = 0; // 使用顺序
   for (int i = R_T0; i < R_S0; i++) {
     InterCode* code = current;
-    while (code != NULL && !isBlockHead(code->next)) { // 还在基本块内（没进入下一个基本块）
-      if (code->kind == IR_READ || code->kind == IR_WRITE || current->kind == IR_ARG || current->kind == IR_RETURN) {
+    while (code != NULL && !isBlockHead(code) && code->kind != IR_FUNCTION) { // 还在基本块内（没进入下一个基本块）
+      if (code->kind == IR_READ || code->kind == IR_WRITE || code->kind == IR_ARG || code->kind == IR_RETURN) {
         Operand* op = code->one.op;
         if (op->kind != OP_CONST && strcmp(op->name, regs[i].var) == 0) {
           useNo += 1;
@@ -378,10 +382,9 @@ void fillReg(RegName reg, bool isConst, char* var, int val) {
 /* 是否是一个块的首句 */
 bool isBlockHead(InterCode* code) {
   if (code == NULL) return true;
-  if (code->prev == NULL) return true;
-  if (code->kind == IR_LABEL) return true;
-  if (code->kind == IR_GOTO) return true;
-  if (code->kind == IR_FUNCTION) return true;
+  if (code->kind == IR_LABEL) return true; // 跳转指令的目标指令
+  if (code->prev == NULL) return true; // 第一条指令
+  else if (code->prev->kind == IR_GOTO || code->prev->kind == IR_IF) return true; // 跳转指令的下一条指令
   return false;
 }
 
