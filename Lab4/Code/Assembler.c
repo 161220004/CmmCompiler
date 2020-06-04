@@ -157,7 +157,7 @@ void generateMIPS(char* fileName) {
       Operand* rightOp = IRCode->two.op2;
       int rightIndex = ensure(rightOp, IRCode);
       if (rightOp->kind == OP_GETCONT) { // 数组取值，则当前右侧寄存器中是数组某个位置的地址，需要转换成值给左侧寄存器
-        fprintf(MIPSFile, "  sw %s, 0(%s)\n", regs[leftIndex].str, regs[rightIndex].str);
+        fprintf(MIPSFile, "  lw %s, 0(%s)\n", regs[leftIndex].str, regs[rightIndex].str);
         if (yyget_debug()) fprintf(MIPSFile, "    # assign %s(Reg[%s]) <- *%s(Reg[%s]) above\n", regs[leftIndex].var, regs[leftIndex].str, regs[rightIndex].var, regs[rightIndex].str);
       } else if (leftOp->kind == OP_GETCONT) { // 数组赋值，则左侧寄存器中是数组某个位置的地址
         fprintf(MIPSFile, "  sw %s, 0(%s)\n", regs[rightIndex].str, regs[leftIndex].str);
