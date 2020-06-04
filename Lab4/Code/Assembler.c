@@ -156,14 +156,18 @@ void generateMIPS(char* fileName) {
       int leftIndex = ensure(leftOp, IRCode);
       Operand* rightOp = IRCode->two.op2;
       int rightIndex = ensure(rightOp, IRCode);
-      if (leftOp->kind == OP_GETCONT) { // 数组赋值，则左侧寄存器中是数组某个位置的地址
+      if (rightOp->kind == OP_GETCONT) { // 数组取值，则当前右侧寄存器中是数组某个位置的地址，需要转换成值给左侧寄存器
+        fprintf(MIPSFile, "  sw %s, 0(%s)\n", regs[leftIndex].str, regs[rightIndex].str);
+        if (yyget_debug()) fprintf(MIPSFile, "    # assign %s(Reg[%s]) <- *%s(Reg[%s]) above\n", regs[leftIndex].var, regs[leftIndex].str, regs[rightIndex].var, regs[rightIndex].str);
+      } else if (leftOp->kind == OP_GETCONT) { // 数组赋值，则左侧寄存器中是数组某个位置的地址
         fprintf(MIPSFile, "  sw %s, 0(%s)\n", regs[rightIndex].str, regs[leftIndex].str);
+        if (yyget_debug()) fprintf(MIPSFile, "    # assign *%s(Reg[%s]) <- %s(Reg[%s]) above\n", regs[leftIndex].var, regs[leftIndex].str, regs[rightIndex].var, regs[rightIndex].str);
       } else { // 变量赋值
         fprintf(MIPSFile, "  move %s, %s\n", regs[leftIndex].str, regs[rightIndex].str);
-      }
-      if (yyget_debug()) {
-        if (rightOp->kind == OP_CONST) fprintf(MIPSFile, "    # assign %s(Reg[%s]) <- %d(Reg[%s]) above\n", regs[leftIndex].var, regs[leftIndex].str, regs[rightIndex].val, regs[rightIndex].str);
-        else fprintf(MIPSFile, "    # assign %s(Reg[%s]) <- %s(Reg[%s]) above\n", regs[leftIndex].var, regs[leftIndex].str, regs[rightIndex].var, regs[rightIndex].str);
+        if (yyget_debug()) {
+          if (rightOp->kind == OP_CONST) fprintf(MIPSFile, "    # assign %s(Reg[%s]) <- %d(Reg[%s]) above\n", regs[leftIndex].var, regs[leftIndex].str, regs[rightIndex].val, regs[rightIndex].str);
+          else fprintf(MIPSFile, "    # assign %s(Reg[%s]) <- %s(Reg[%s]) above\n", regs[leftIndex].var, regs[leftIndex].str, regs[rightIndex].var, regs[rightIndex].str);
+        }
       }
     } else if (IRCode->kind == IR_ADD || IRCode->kind == IR_SUB || IRCode->kind == IR_MUL || IRCode->kind == IR_DIV) {
       Operand* resultOp = IRCode->three.op1;
@@ -201,13 +205,15 @@ int ensure(Operand* op, InterCode* current) {
     } else { // 变量
       int memIndex = findInMemList(op->name, 0, memListLen);
       if (memIndex == -1) { // 不在变量内存表内，则添加到变量内存表，并首次进入寄存器，不写入内存
-        if (current->kind == IR_DEC || op->kind == OP_GETADDR) { // 是数组
+        if (current->kind == IR_DEC) { // 数组定义
           int size = current->two.op2->val; // 数组大小
           esp -= size;
           fprintf(MIPSFile, "  addi $sp, $sp, -%d\n", size); // 在栈中保留数组大小的空位
           memIndex = addToMemList(op->name, esp - ebp);
           memList[memIndex].isArray = true;
           if (yyget_debug()) fprintf(MIPSFile, "    # ensure: keep space at (%d)fp for array %s above\n", esp - ebp, op->name);
+          // 把首地址放入寄存器
+          fprintf(MIPSFile, "  addi %s, $fp, %d\n", regs[newIndex].str, memList[memIndex].offsetFP);
         } else { // 普通变量
           esp -= 4;
           fprintf(MIPSFile, "  addi $sp, $sp, -4\n");

@@ -37,13 +37,12 @@ test:
 	./parser ../Test/test.cmm ../Result/test.s
 test1:
 	./parser ../Test/test1.cmm ../Result/test1.s
+test2:
+	./parser ../Test/test2.cmm ../Result/test2.s
 testall:
 	./parser ../Test/test.cmm ../Result/test.s
 	./parser ../Test/test1.cmm ../Result/test1.s
 	./parser ../Test/test2.cmm ../Result/test2.s
-	./parser ../Test/test3.cmm ../Result/test3.s
-	./parser ../Test/test4.cmm ../Result/test4.s
-	./parser ../Test/test5.cmm ../Result/test5.s
 clean:
 	rm -f parser lex.yy.c syntax.tab.c syntax.tab.h syntax.output
 	rm -f $(OBJS) $(OBJS:.o=.d)
